@@ -14,7 +14,7 @@ window.AUTH0_CONFIG = {
   
   cacheLocation: "localstorage",    // Permite guardar los tokens de forma segura fuera de la memoria volátil
   authorizationParams: {
-    //audience: "https://99copias-panel.api", // Ajustado para que coincida con tu error
+    audience: "https://99copias-panel.api", // Ajustado para que coincida con tu error
     scope: "openid profile email offline_access", // Requiere offline_access explícitamente
     redirect_uri: window.location.origin + "/pedidos.html", // Nota: el SDK usa minúsculas y guion bajo (redirect_uri)
   }
