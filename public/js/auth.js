@@ -2,13 +2,31 @@
 //
 // Wrapper chico sobre @auth0/auth0-spa-js (cargado por CDN en el <script>
 // del HTML). Expone window.panelAuth con lo que necesitan las demás páginas.
+//
+// IMPORTANTE: audience/scope/redirect_uri se pasan explícitos tanto al
+// crear el cliente COMO en cada loginWithRedirect() y getTokenSilently().
+// Confiar solo en los defaults del cliente puede hacer que el /authorize
+// real no incluya "offline_access", y entonces Auth0 nunca emite un refresh
+// token — eso es lo que causaba el error "Missing Refresh Token".
 
 let auth0Client = null;
+
+function resolveParams() {
+  const config = window.AUTH0_CONFIG;
+  if (!config) {
+    throw new Error("No se encontró la configuración window.AUTH0_CONFIG");
+  }
+  const ap = config.authorizationParams || {};
+  return {
+    audience: ap.audience || config.audience,
+    scope: ap.scope || "openid profile email offline_access",
+    redirect_uri: ap.redirect_uri || config.redirectUri,
+  };
+}
 
 async function getClient() {
   if (!auth0Client) {
     const config = window.AUTH0_CONFIG;
-
     if (!config) {
       throw new Error("No se encontró la configuración window.AUTH0_CONFIG");
     }
@@ -16,14 +34,9 @@ async function getClient() {
     auth0Client = await auth0.createAuth0Client({
       domain: config.domain,
       clientId: config.clientId,
-      cacheLocation: config.cacheLocation || "localstorage", 
+      cacheLocation: config.cacheLocation || "localstorage",
       useRefreshTokens: config.useRefreshTokens !== undefined ? config.useRefreshTokens : true,
-      authorizationParams: {
-        audience: config.authorizationParams?.audience || config.audience,
-        // Si el scope no viene definido en config, por defecto usamos los necesarios para offline access
-        scope: config.authorizationParams?.scope || "openid profile email offline_access",
-        redirect_uri: config.authorizationParams?.redirect_uri || config.redirectUri,
-      },
+      authorizationParams: resolveParams(),
     });
   }
   return auth0Client;
@@ -31,7 +44,11 @@ async function getClient() {
 
 async function login() {
   const client = await getClient();
-  await client.loginWithRedirect();
+  // Pasamos authorizationParams EXPLÍCITOS acá también: es lo que garantiza
+  // que el redirect real a Auth0 incluya audience + scope=offline_access.
+  await client.loginWithRedirect({
+    authorizationParams: resolveParams(),
+  });
 }
 
 async function logout() {
@@ -59,7 +76,11 @@ async function getUser() {
 
 async function getToken() {
   const client = await getClient();
-  return client.getTokenSilently();
+  // Mismo motivo que en login(): forzamos audience/scope explícitos para
+  // que coincidan siempre con los que se usaron al loguearse.
+  return client.getTokenSilently({
+    authorizationParams: resolveParams(),
+  });
 }
 
 /**
@@ -106,3 +127,4 @@ async function apiFetch(path, options = {}) {
 }
 
 window.panelAuth = { login, logout, requireAuth, isAuthenticated, getUser, getToken, apiFetch };
+
