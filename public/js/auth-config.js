@@ -7,8 +7,8 @@
 // Auth0 Dashboard > Applications > APIs (así el access token sirve para
 // llamar a /api/* y no solo para identificar al usuario).
 window.AUTH0_CONFIG = {
-  domain: "TU-TENANT.us.auth0.com",
-  clientId: "TU-CLIENT-ID",
-  audience: "https://panel-admin.99copias.api",
+  domain: "dev-0z2lkf1fu6a4t6wl.us.auth0.com",
+  clientId: "KmR0t6SiRg0s9vftsm01ovsVeIOTChRL",
+  audience: "https://99copias-panel.api",
   redirectUri: window.location.origin + "/pedidos.html",
 };
