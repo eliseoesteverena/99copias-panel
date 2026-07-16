@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>99copias — Panel de administración</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="login-screen">
+    <h1>Panel de administración — 99copias</h1>
+    <p>Acceso restringido al equipo de la imprenta.</p>
+    <button class="primary" id="btn-login">Iniciar sesión</button>
+  </div>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+  <script src="/js/auth-config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    (async () => {
+      // Si ya hay sesión activa, no mostrar el login, ir directo al panel.
+      const authenticated = await window.panelAuth.isAuthenticated();
+      if (authenticated) {
+        window.location.href = "/pedidos.html";
+        return;
+      }
+      document.getElementById("btn-login").addEventListener("click", () => {
+        window.panelAuth.login();
+      });
+    })();
+  </script>
+</body>
+</html>

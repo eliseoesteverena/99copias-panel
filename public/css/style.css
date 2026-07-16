@@ -1,0 +1,135 @@
+/* public/css/style.css
+   Identidad "plano de arquitectura": blanco, negro, azul Francia como acento
+   puntual, sin bordes redondeados, líneas finas. Ver sección 9 del contexto. */
+
+:root {
+  --negro: #111111;
+  --blanco: #ffffff;
+  --azul: #0055a4;
+  --gris-linea: #d8d8d8;
+  --gris-texto: #555555;
+  --rojo-alerta: #b3261e;
+  --verde-ok: #1e7a34;
+  --amarillo-warn: #8a6d00;
+  font-family: "Geist Mono", "Geist Sans", ui-monospace, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--blanco);
+  color: var(--negro);
+  font-family: "Geist Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+header.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--negro);
+}
+
+header.panel-header .marca {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+header.panel-header .marca span {
+  color: var(--azul);
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--blanco);
+  color: var(--negro);
+  border: 1px solid var(--negro);
+  border-radius: 0;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+button:hover, .btn:hover { background: var(--negro); color: var(--blanco); }
+
+button.primary { background: var(--azul); color: var(--blanco); border-color: var(--azul); }
+button.primary:hover { background: var(--negro); border-color: var(--negro); }
+
+main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.login-screen h1 { font-size: 20px; margin: 0; }
+.login-screen p { color: var(--gris-texto); margin: 0; max-width: 320px; }
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gris-linea);
+}
+
+.filtros select, .filtros input {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  border: 1px solid var(--negro);
+  border-radius: 0;
+  background: var(--blanco);
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gris-texto);
+  border-bottom: 1px solid var(--negro);
+  padding: 8px 10px;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid var(--gris-linea);
+  vertical-align: top;
+}
+
+tbody tr:hover { background: #fafafa; cursor: pointer; }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+}
+
+.badge.pendiente   { color: var(--amarillo-warn); }
+.badge.en_proceso  { color: var(--azul); }
+.badge.listo       { color: var(--verde-ok); }
+.badge.entregado   { color: var(--gris-texto); }
+
+.badge.pagado-si { color: var(--verde-ok); border-color: var(--verde-ok); }
+.badge.pagado-no { color: var(--rojo-alerta); border-color: var(--rojo-alerta); }
+
+.estado-vacio, .estado-error, .estado-cargando {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--gris-texto);
+}
+
+.estado-error { color: var(--rojo-alerta); }
