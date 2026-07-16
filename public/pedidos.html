@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pedidos — Panel 99copias</title>
+  <title>Detalle de pedido — Panel 99copias</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -16,38 +16,15 @@
   </header>
 
   <main>
-    <div class="filtros">
-      <select id="f-estado">
-        <option value="">Estado: todos</option>
-        <option value="pendiente">Pendiente</option>
-        <option value="en_proceso">En proceso</option>
-        <option value="listo">Listo</option>
-        <option value="entregado">Entregado</option>
-      </select>
-
-      <select id="f-pagado">
-        <option value="">Pago: todos</option>
-        <option value="1">Pagado</option>
-        <option value="0">No pagado</option>
-      </select>
-
-      <select id="f-zona">
-        <option value="">Zona: todas</option>
-      </select>
-
-      <input type="date" id="f-fecha" title="Fecha de entrega" />
-
-      <button id="btn-limpiar">Limpiar filtros</button>
-    </div>
-
+    <a href="/pedidos.html" class="volver">&larr; Volver al listado</a>
     <div id="contenido">
-      <div class="estado-cargando">Cargando pedidos…</div>
+      <div class="estado-cargando">Cargando pedido…</div>
     </div>
   </main>
 
   <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
   <script src="/js/auth-config.js"></script>
   <script src="/js/auth.js"></script>
-  <script src="/js/pedidos.js"></script>
+  <script src="/js/pedido.js"></script>
 </body>
 </html>
