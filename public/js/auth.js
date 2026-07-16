@@ -2,41 +2,20 @@
 //
 // Wrapper chico sobre @auth0/auth0-spa-js (cargado por CDN en el <script>
 // del HTML). Expone window.panelAuth con lo que necesitan las demás páginas.
-//
-// IMPORTANTE: audience/scope/redirect_uri se pasan explícitos tanto al
-// crear el cliente COMO en cada loginWithRedirect() y getTokenSilently().
-// Confiar solo en los defaults del cliente puede hacer que el /authorize
-// real no incluya "offline_access", y entonces Auth0 nunca emite un refresh
-// token — eso es lo que causaba el error "Missing Refresh Token".
 
 let auth0Client = null;
 
-function resolveParams() {
-  const config = window.AUTH0_CONFIG;
-  if (!config) {
-    throw new Error("No se encontró la configuración window.AUTH0_CONFIG");
-  }
-  const ap = config.authorizationParams || {};
-  return {
-    audience: ap.audience || config.audience,
-    scope: ap.scope || "openid profile email offline_access",
-    redirect_uri: ap.redirect_uri || config.redirectUri,
-  };
-}
-
 async function getClient() {
   if (!auth0Client) {
-    const config = window.AUTH0_CONFIG;
-    if (!config) {
-      throw new Error("No se encontró la configuración window.AUTH0_CONFIG");
-    }
-
     auth0Client = await auth0.createAuth0Client({
-      domain: config.domain,
-      clientId: config.clientId,
-      cacheLocation: config.cacheLocation || "localstorage",
-      useRefreshTokens: config.useRefreshTokens !== undefined ? config.useRefreshTokens : true,
-      authorizationParams: resolveParams(),
+      domain: window.AUTH0_CONFIG.domain,
+      clientId: window.AUTH0_CONFIG.clientId,
+      authorizationParams: {
+        audience: window.AUTH0_CONFIG.audience,
+        redirect_uri: window.AUTH0_CONFIG.redirectUri,
+      },
+      cacheLocation: "localstorage", // sobrevive a recargas de página
+      useRefreshTokens: true,
     });
   }
   return auth0Client;
@@ -44,11 +23,7 @@ async function getClient() {
 
 async function login() {
   const client = await getClient();
-  // Pasamos authorizationParams EXPLÍCITOS acá también: es lo que garantiza
-  // que el redirect real a Auth0 incluya audience + scope=offline_access.
-  await client.loginWithRedirect({
-    authorizationParams: resolveParams(),
-  });
+  await client.loginWithRedirect();
 }
 
 async function logout() {
@@ -57,8 +32,20 @@ async function logout() {
 }
 
 async function handleRedirectCallback() {
-  const client = await getClient();
-  if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
+  const params = new URLSearchParams(window.location.search);
+
+  // Auth0 volvió con un error (ej. callback URL mal configurada, usuario
+  // canceló, etc). Si no distinguimos esto, requireAuth() interpretaría
+  // "no autenticado" y llamaría a login() de nuevo → loop infinito de
+  // redirects entre el panel y Auth0.
+  if (params.has("error")) {
+    const desc = params.get("error_description") || params.get("error");
+    window.history.replaceState({}, document.title, window.location.pathname);
+    throw new Error("Auth0 devolvió un error en el login: " + desc);
+  }
+
+  if (params.has("code") && params.has("state")) {
+    const client = await getClient();
     await client.handleRedirectCallback();
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -76,25 +63,26 @@ async function getUser() {
 
 async function getToken() {
   const client = await getClient();
-  // Mismo motivo que en login(): forzamos audience/scope explícitos para
-  // que coincidan siempre con los que se usaron al loguearse.
-  return client.getTokenSilently({
-    authorizationParams: resolveParams(),
-  });
+  return client.getTokenSilently();
 }
 
 /**
  * Llamar al principio de cualquier página protegida (ej. pedidos.html).
- * Si no hay sesión, redirige al login. Si la vuelve de un redirect de Auth0
- * (?code=&state=), procesa el callback primero.
+ * Si no hay sesión, redirige al login. Si vuelve de un redirect de Auth0
+ * (?code=&state=), procesa el callback primero. Si Auth0 volvió con
+ * ?error=..., tira una excepción legible en vez de reintentar el login.
+ *
+ * @returns {Promise<boolean>} true si está redirigiendo a Auth0 ahora mismo
+ *   (el caller no debe seguir ejecutando nada más).
  */
 async function requireAuth() {
   await handleRedirectCallback();
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     await login();
-    return; // login() redirige, no sigue ejecutando
+    return true;
   }
+  return false;
 }
 
 /**
@@ -127,4 +115,3 @@ async function apiFetch(path, options = {}) {
 }
 
 window.panelAuth = { login, logout, requireAuth, isAuthenticated, getUser, getToken, apiFetch };
-
