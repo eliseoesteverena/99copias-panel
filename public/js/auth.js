@@ -7,15 +7,23 @@ let auth0Client = null;
 
 async function getClient() {
   if (!auth0Client) {
+    const config = window.AUTH0_CONFIG;
+
+    if (!config) {
+      throw new Error("No se encontró la configuración window.AUTH0_CONFIG");
+    }
+
     auth0Client = await auth0.createAuth0Client({
-      domain: window.AUTH0_CONFIG.domain,
-      clientId: window.AUTH0_CONFIG.clientId,
+      domain: config.domain,
+      clientId: config.clientId,
+      cacheLocation: config.cacheLocation || "localstorage", 
+      useRefreshTokens: config.useRefreshTokens !== undefined ? config.useRefreshTokens : true,
       authorizationParams: {
-        audience: window.AUTH0_CONFIG.audience,
-        redirect_uri: window.AUTH0_CONFIG.redirectUri,
+        audience: config.authorizationParams?.audience || config.audience,
+        // Si el scope no viene definido en config, por defecto usamos los necesarios para offline access
+        scope: config.authorizationParams?.scope || "openid profile email offline_access",
+        redirect_uri: config.authorizationParams?.redirect_uri || config.redirectUri,
       },
-      cacheLocation: "localstorage", // sobrevive a recargas de página
-      useRefreshTokens: true,
     });
   }
   return auth0Client;
