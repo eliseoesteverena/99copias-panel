@@ -1,0 +1,13 @@
+{
+  "name": "99copias-panel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Panel de administración - 99copias (pedidos, precios, turnos de entrega). Sin dependencias externas: el .zip grupal se arma con un armador propio en functions/api/lib/zip.js para no depender de npm install en el build de Cloudflare Pages.",
+  "scripts": {
+    "dev": "wrangler pages dev public --d1 DB --r2 BUCKET",
+    "deploy": "wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.0"
+  }
+}
