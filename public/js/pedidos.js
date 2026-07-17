@@ -1,6 +1,9 @@
 // ---------- Estado ----------
 let pedidoSeleccionadoId = null;
 let debounceBusqueda = null;
+let productosPorId = {}; // id -> { descripcion, unidad_medida }
+
+const FAZ_LABEL = { simple: 'Simple faz', doble: 'Doble faz' };
 
 const ESTADOS_ORDEN = ['pendiente', 'en_proceso', 'listo', 'entregado'];
 const ESTADOS_LABEL = {
@@ -13,6 +16,7 @@ const ESTADOS_LABEL = {
 // ---------- Init ----------
 document.addEventListener('DOMContentLoaded', () => {
   cargarZonasFiltro();
+  cargarProductosCache();
   cargarLista();
 
   document.getElementById('f-buscar').addEventListener('input', () => {
@@ -45,6 +49,18 @@ async function cargarZonasFiltro() {
     });
   } catch (e) {
     // el filtro de zona simplemente no se completa, no es crítico
+  }
+}
+
+async function cargarProductosCache() {
+  try {
+    const data = await api.get('/api/productos');
+    productosPorId = {};
+    (data.productos || []).forEach((p) => {
+      productosPorId[p.id] = p;
+    });
+  } catch (e) {
+    // si falla, los cards de archivo muestran "Producto #id" como respaldo
   }
 }
 
@@ -201,38 +217,9 @@ function renderDetalle(data) {
       </div>
     </div>
     <div class="archivos-grid" id="archivos-grid">
-      ${archivos.map((a) => archivoCardHtml(t.id, a)).join('')}
+      ${archivos.map((a, i) => archivoCardHtml(t.id, a, emparejarItem(a, items, i))).join('')}
     </div>
-
-    <h2>Detalle del pedido</h2>
-    <table class="items-tabla">
-      <thead>
-        <tr>
-          <th>Archivo</th><th class="num">Carillas</th><th class="num">Copias</th>
-          <th>Producto secundario</th><th class="num">Subtotal 1º</th><th class="num">Subtotal 2º</th><th class="num">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items
-          .map(
-            (it) => `
-          <tr>
-            <td>${escapeHtml(it.nombre)}</td>
-            <td class="num">${it.carillas ?? '—'}</td>
-            <td class="num">${it.copias ?? '—'}</td>
-            <td>${escapeHtml(it.producto_secundario || '—')}</td>
-            <td class="num">${fmtMoneda(it.subtotal_primario)}</td>
-            <td class="num">${fmtMoneda(it.subtotal_secundario)}</td>
-            <td class="num">${fmtMoneda(it.total)}</td>
-          </tr>`
-          )
-          .join('')}
-        <tr class="total-row">
-          <td colspan="6">Total del pedido</td>
-          <td class="num">${fmtMoneda(t.total)}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="archivos-total">Total del pedido: <strong>${fmtMoneda(t.total)}</strong></div>
 
     <h2 style="margin-top:24px;">Pagos</h2>
     ${
@@ -289,7 +276,16 @@ function renderDetalle(data) {
   }
 }
 
-function archivoCardHtml(trabajoId, archivo) {
+// Empareja cada archivo con su item de precio correspondiente. Primero
+// intenta por nombre exacto (lo normal); si hay nombres duplicados o no
+// matchea, cae al mismo índice como respaldo.
+function emparejarItem(archivo, items, indice) {
+  const porNombre = items.find((it) => it.nombre === archivo.nombre);
+  if (porNombre) return porNombre;
+  return items[indice] || null;
+}
+
+function archivoCardHtml(trabajoId, archivo, item) {
   const tieneError = !!archivo.error_confirmacion;
   const ext = (archivo.nombre || '').split('.').pop().toLowerCase();
   let claseIcono = 'doc';
@@ -297,21 +293,41 @@ function archivoCardHtml(trabajoId, archivo) {
   if (ext === 'pdf') claseIcono = 'pdf';
   else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) claseIcono = 'img';
 
-  const meta = [
-    archivo.paginas ? `${archivo.paginas} pág.` : null,
-    archivo.copias ? `${archivo.copias} cop.` : null,
-    archivo.acabado || null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // Config de impresión tal cual la pidió el cliente. Se muestra completa
+  // acá (en la card de cada archivo) en vez de como columnas de una tabla
+  // general, porque no todos los archivos comparten los mismos campos y una
+  // tabla con una columna por dato se vuelve ilegible.
+  const configFilas = [
+    ['Páginas', archivo.paginas ?? '—'],
+    ['Copias', archivo.copias ?? '—'],
+    ['Faz', FAZ_LABEL[archivo.faz] || archivo.faz || '—'],
+    ['Rango', archivo.rango && String(archivo.rango).trim() ? archivo.rango : 'Completo'],
+    ['Acabado', archivo.acabado || '—'],
+  ];
+
+  let bloquePrecio = '';
+  if (item) {
+    const nombreProductoPrimario =
+      item.producto_primario_id != null
+        ? productosPorId[item.producto_primario_id]?.descripcion || `Producto #${item.producto_primario_id}`
+        : 'Producto 1º';
+    const nombreProductoSecundario = item.producto_secundario || 'Producto 2º';
+
+    bloquePrecio = `
+      <dl class="archivo-col archivo-precio">
+        <dt>${escapeHtml(nombreProductoPrimario)}</dt><dd class="num">${fmtMoneda(item.subtotal_primario)}</dd>
+        <dt>${escapeHtml(nombreProductoSecundario)}</dt><dd class="num">${fmtMoneda(item.subtotal_secundario)}</dd>
+        <dt class="archivo-precio-total-label">Total</dt><dd class="num archivo-precio-total-valor">${fmtMoneda(item.total)}</dd>
+      </dl>
+    `;
+  }
 
   return `
     <div class="archivo-card ${tieneError ? 'con-error' : ''}">
       <div class="archivo-miniatura ${claseIcono}">${escapeHtml(etiquetaIcono)}</div>
-      <div class="archivo-info">
+      <div class="archivo-col archivo-col-info">
         <div class="archivo-nombre">${escapeHtml(archivo.nombre)}</div>
-        <div class="archivo-meta">${meta || '—'}</div>
-        ${tieneError ? `<div class="mensaje error" style="padding:4px 6px;font-size:11px;margin-bottom:6px;">⚠ ${escapeHtml(archivo.error_confirmacion)}</div>` : ''}
+        ${tieneError ? `<div class="mensaje error" style="padding:4px 6px;font-size:11px;margin:4px 0;">⚠ ${escapeHtml(archivo.error_confirmacion)}</div>` : ''}
         ${
           archivo.r2_key
             ? `<div class="archivo-acciones">
@@ -321,6 +337,10 @@ function archivoCardHtml(trabajoId, archivo) {
             : '<div class="archivo-acciones" style="color:var(--rojo);font-size:11px;">No disponible en el bucket</div>'
         }
       </div>
+      <dl class="archivo-col archivo-config">
+        ${configFilas.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd>`).join('')}
+      </dl>
+      ${bloquePrecio}
     </div>
   `;
 }

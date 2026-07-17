@@ -161,17 +161,19 @@
 .archivos-acciones-grupales { display: flex; gap: 6px; }
 
 .archivos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .archivo-card {
   border: 1px solid var(--gris-borde);
-  padding: 10px;
+  padding: 12px;
   display: flex;
-  gap: 10px;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .archivo-card.con-error { border-color: var(--rojo); background: #fdeceb; }
@@ -195,18 +197,18 @@
 .archivo-miniatura.img { background: #0055a4; }
 .archivo-miniatura.doc { background: #1e7a3f; }
 
-.archivo-info { flex: 1; min-width: 0; }
+/* Columnas dentro de cada card: info | config de impresión | precio */
+.archivo-col { min-width: 0; }
+
+.archivo-col-info {
+  flex: 1 1 220px;
+}
 
 .archivo-nombre {
   font-weight: 600;
   font-size: 13px;
   word-break: break-word;
-}
-
-.archivo-meta {
-  font-size: 11px;
-  color: var(--gris-texto);
-  margin: 2px 0 6px 0;
+  margin-bottom: 8px;
 }
 
 .archivo-acciones {
@@ -215,10 +217,53 @@
   flex-wrap: wrap;
 }
 
-/* ---------- Items / factura ---------- */
+/* dt/dd compactos, en columnas fijas, para archivo-config y archivo-precio */
+.archivo-config,
+.archivo-precio {
+  flex: 0 0 190px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  font-size: 12px;
+}
 
-table.items-tabla td, table.items-tabla th { font-size: 13px; }
-table.items-tabla td.num, table.items-tabla th.num { text-align: right; }
+.archivo-config dt,
+.archivo-precio dt {
+  color: var(--gris-texto);
+}
+
+.archivo-config dd,
+.archivo-precio dd {
+  margin: 0;
+}
+
+.archivo-precio dd.num { text-align: right; }
+
+.archivo-precio-total-label {
+  font-weight: 700;
+  color: var(--negro) !important;
+  border-top: 1px solid var(--gris-borde);
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+.archivo-precio-total-valor {
+  font-weight: 700;
+  border-top: 1px solid var(--gris-borde);
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+.archivos-total {
+  text-align: right;
+  font-size: 13px;
+  padding: 8px 0 22px 0;
+  border-top: 1px solid var(--negro);
+  margin-top: 4px;
+}
+
+/* ---------- Items / factura ---------- */
 
 .total-row td {
   font-weight: 700;
@@ -234,4 +279,5 @@ table.items-tabla td.num, table.items-tabla th.num { text-align: right; }
   .pedidos-layout { grid-template-columns: 1fr; height: auto; }
   .pedidos-lista-col { border-right: none; border-bottom: 1px solid var(--negro); }
   .detalle-grid { grid-template-columns: 1fr; }
+  .archivo-config, .archivo-precio { flex: 1 1 100%; }
 }
