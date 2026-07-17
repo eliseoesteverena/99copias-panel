@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turnos de entrega — Panel 99copias</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/turnos.css">
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="marca">99copias · admin</div>
+  <nav>
+    <a href="/index.html">Pedidos</a>
+    <a href="/precios.html">Precios</a>
+    <a href="/turnos.html" class="activo">Turnos de entrega</a>
+  </nav>
+</header>
+
+<div class="pagina">
+  <h1>Zonas, turnos y excepciones de entrega</h1>
+
+  <div id="estado-global" class="mensaje oculto"></div>
+
+  <!-- ===================== ZONAS ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Zonas</h2>
+      <button class="chico primario" id="btn-nueva-zona">+ Nueva zona</button>
+    </div>
+    <table>
+      <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbody-zonas"><tr><td colspan="3" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== TURNOS RECURRENTES ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Turnos recurrentes</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="filtro-zona-turnos"><option value="">Todas las zonas</option></select>
+        <button class="chico primario" id="btn-nuevo-turno">+ Nuevo turno</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Zona</th><th>Día</th><th>Horario</th><th>Capacidad</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody id="tbody-turnos"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== EXCEPCIONES ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Excepciones puntuales</h2>
+      <button class="chico primario" id="btn-nueva-excepcion">+ Nueva excepción</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Zona</th><th>Turno</th><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Motivo</th><th></th></tr>
+      </thead>
+      <tbody id="tbody-excepciones"><tr><td colspan="7" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+</div>
+
+<!-- ===================== MODAL ZONA ===================== -->
+<div class="modal-fondo oculto" id="modal-zona-fondo">
+  <div class="modal">
+    <h2 id="modal-zona-titulo">Nueva zona</h2>
+    <form id="form-zona">
+      <input type="hidden" id="z-id">
+      <div class="campo">
+        <label for="z-nombre">Nombre</label>
+        <input type="text" id="z-nombre" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="z-activa" checked style="width:auto;"> Activa
+        </label>
+      </div>
+      <div id="modal-zona-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-zona-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL TURNO ===================== -->
+<div class="modal-fondo oculto" id="modal-turno-fondo">
+  <div class="modal">
+    <h2 id="modal-turno-titulo">Nuevo turno</h2>
+    <form id="form-turno">
+      <input type="hidden" id="t-id">
+      <div class="campo">
+        <label for="t-zona">Zona</label>
+        <select id="t-zona" required style="width:100%;"></select>
+      </div>
+      <div class="campo">
+        <label for="t-dia">Día de la semana</label>
+        <select id="t-dia" required style="width:100%;">
+          <option value="0">Domingo</option>
+          <option value="1">Lunes</option>
+          <option value="2">Martes</option>
+          <option value="3">Miércoles</option>
+          <option value="4">Jueves</option>
+          <option value="5">Viernes</option>
+          <option value="6">Sábado</option>
+        </select>
+      </div>
+      <div class="campo campo-doble">
+        <div>
+          <label for="t-hora-inicio">Hora inicio</label>
+          <input type="time" id="t-hora-inicio" required style="width:100%;">
+        </div>
+        <div>
+          <label for="t-hora-fin">Hora fin</label>
+          <input type="time" id="t-hora-fin" required style="width:100%;">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="t-capacidad">Capacidad máxima (pedidos) — vacío = sin límite</label>
+        <input type="number" id="t-capacidad" min="0" style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="t-activo" checked style="width:auto;"> Activo
+        </label>
+      </div>
+      <div id="modal-turno-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-turno-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL EXCEPCIÓN ===================== -->
+<div class="modal-fondo oculto" id="modal-excepcion-fondo">
+  <div class="modal">
+    <h2>Nueva excepción</h2>
+    <form id="form-excepcion">
+      <div class="campo">
+        <label for="e-turno">Turno</label>
+        <select id="e-turno" required style="width:100%;"></select>
+      </div>
+      <div class="campo">
+        <label for="e-fecha">Fecha</label>
+        <input type="date" id="e-fecha" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label for="e-tipo">Tipo</label>
+        <select id="e-tipo" style="width:100%;">
+          <option value="cancelado">Cancelado</option>
+          <option value="capacidad_modificada">Capacidad modificada</option>
+          <option value="horario_modificado">Horario modificado</option>
+        </select>
+      </div>
+      <div class="campo oculto" id="e-campo-capacidad">
+        <label for="e-capacidad">Capacidad máxima ese día</label>
+        <input type="number" id="e-capacidad" min="0" style="width:100%;">
+      </div>
+      <div class="campo campo-doble oculto" id="e-campo-horario">
+        <div>
+          <label for="e-hora-inicio">Hora inicio</label>
+          <input type="time" id="e-hora-inicio" style="width:100%;">
+        </div>
+        <div>
+          <label for="e-hora-fin">Hora fin</label>
+          <input type="time" id="e-hora-fin" style="width:100%;">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="e-motivo">Motivo (opcional)</label>
+        <input type="text" id="e-motivo" style="width:100%;" placeholder="ej: feriado nacional">
+      </div>
+      <div id="modal-excepcion-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-excepcion-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/turnos.js"></script>
+</body>
+</html>

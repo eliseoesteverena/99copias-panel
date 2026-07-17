@@ -1,0 +1,22 @@
+.seccion {
+  margin-bottom: 34px;
+  padding-bottom: 6px;
+}
+
+.seccion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.campo-doble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+td.acciones-col {
+  text-align: right;
+  white-space: nowrap;
+}

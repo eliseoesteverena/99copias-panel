@@ -1,52 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pedidos — Panel 99copias</title>
-  <link rel="stylesheet" href="/css/style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedidos — Panel 99copias</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/pedidos.css">
 </head>
 <body>
-  <header class="panel-header">
-    <div class="marca">99<span>copias</span> · panel</div>
-    <div>
-    </header>
 
-  <div class="split">
-    <aside class="lista-col">
-      <div class="filtros">
-        <select id="f-estado">
-          <option value="">Estado: todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="en_proceso">En proceso</option>
-          <option value="listo">Listo</option>
-          <option value="entregado">Entregado</option>
-        </select>
-        <select id="f-pagado">
-          <option value="">Pago: todos</option>
-          <option value="1">Pagado</option>
-          <option value="0">No pagado</option>
-        </select>
-        <select id="f-zona">
-          <option value="">Zona: todas</option>
-        </select>
-        <button id="btn-limpiar" title="Limpiar filtros">✕</button>
+<header class="top-nav">
+  <div class="marca">99copias · admin</div>
+  <nav>
+    <a href="/index.html" class="activo">Pedidos</a>
+    <a href="/precios.html">Precios</a>
+    <a href="/turnos.html">Turnos de entrega</a>
+  </nav>
+</header>
+
+<div class="pedidos-layout">
+
+  <!-- ---------- Columna izquierda: filtros + lista ---------- -->
+  <aside class="pedidos-lista-col">
+    <div class="filtros">
+      <input type="text" id="f-buscar" placeholder="Buscar cliente o DNI…">
+      <select id="f-estado">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="en_proceso">En proceso</option>
+        <option value="listo">Listo</option>
+        <option value="entregado">Entregado</option>
+      </select>
+      <select id="f-pagado">
+        <option value="">Pagado / No pagado</option>
+        <option value="1">Pagado</option>
+        <option value="0">No pagado</option>
+      </select>
+      <select id="f-zona">
+        <option value="">Todas las zonas</option>
+      </select>
+      <div class="filtros-fechas">
+        <input type="date" id="f-fecha-desde" title="Entrega desde">
+        <input type="date" id="f-fecha-hasta" title="Entrega hasta">
       </div>
-      <ul id="lista-pedidos" class="lista-pedidos">
-        <li class="estado-cargando">Cargando…</li>
-      </ul>
-    </aside>
+      <button id="btn-limpiar-filtros" class="chico">Limpiar filtros</button>
+    </div>
 
-    <main id="detalle" class="detalle-col">
-      <div class="detalle-vacio">Elegí un pedido de la lista para ver el detalle.</div>
-    </main>
-  </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
-  <!--
-  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+    <div id="lista-estado" class="mensaje oculto"></div>
+    <div id="lista-pedidos" class="lista-pedidos"></div>
+  </aside>
 
-  <script src="/js/auth-config.js"></script>
-  <script src="/js/auth.js"></script>-->
-  <script src="/js/pedidos.js"></script>
+  <!-- ---------- Columna derecha: detalle del pedido seleccionado ---------- -->
+  <main class="pedidos-detalle-col" id="detalle-col">
+    <div class="vacio">Elegí un pedido de la lista para ver el detalle.</div>
+  </main>
+
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/pedidos.js"></script>
 </body>
 </html>

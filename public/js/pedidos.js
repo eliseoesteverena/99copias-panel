@@ -1,389 +1,377 @@
-// public/js/pedidos.js
-//
-// Vista dividida estilo cliente de mail: lista de pedidos a la izquierda,
-// detalle a la derecha. Todo en una sola página (no navega a otra URL al
-// hacer click en un pedido).
-//
-// No hay Authorization header en ningún fetch: la única puerta es el login
-// de Auth0 al cargar la página (ver auth.js / requireAuth).
+// ---------- Estado ----------
+let pedidoSeleccionadoId = null;
+let debounceBusqueda = null;
 
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
-}
-
-const ESTADO_LABEL = {
-  pendiente: "Pendiente",
-  en_proceso: "En proceso",
-  listo: "Listo",
-  entregado: "Entregado",
+const ESTADOS_ORDEN = ['pendiente', 'en_proceso', 'listo', 'entregado'];
+const ESTADOS_LABEL = {
+  pendiente: 'Pendiente',
+  en_proceso: 'En proceso',
+  listo: 'Listo',
+  entregado: 'Entregado',
 };
 
-const DIA_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const EXT_IMAGEN = ["jpg", "jpeg", "png", "gif", "webp"];
+// ---------- Init ----------
+document.addEventListener('DOMContentLoaded', () => {
+  cargarZonasFiltro();
+  cargarLista();
 
-let pedidoSeleccionadoId = null;
+  document.getElementById('f-buscar').addEventListener('input', () => {
+    clearTimeout(debounceBusqueda);
+    debounceBusqueda = setTimeout(cargarLista, 300);
+  });
+  ['f-estado', 'f-pagado', 'f-zona', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
+    document.getElementById(id).addEventListener('change', cargarLista);
+  });
+  document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+    document.getElementById('f-buscar').value = '';
+    document.getElementById('f-estado').value = '';
+    document.getElementById('f-pagado').value = '';
+    document.getElementById('f-zona').value = '';
+    document.getElementById('f-fecha-desde').value = '';
+    document.getElementById('f-fecha-hasta').value = '';
+    cargarLista();
+  });
+});
 
-function fmtMoneda(n) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(n || 0);
+async function cargarZonasFiltro() {
+  try {
+    const data = await api.get('/api/zonas');
+    const select = document.getElementById('f-zona');
+    (data.zonas || []).forEach((z) => {
+      const opt = document.createElement('option');
+      opt.value = z.id;
+      opt.textContent = z.nombre;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    // el filtro de zona simplemente no se completa, no es crítico
+  }
 }
-
-function fmtFecha(iso) {
-  if (!iso) return "sin fecha";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}`;
-}
-
-function fmtFechaHora(iso) {
-  if (!iso) return "—";
-  return iso.replace("T", " ").slice(0, 16);
-}
-
-function extension(nombre) {
-  return (nombre || "").split(".").pop().toLowerCase();
-}
-
-function mostrarToast(mensaje, esError = false) {
-  const existente = document.querySelector(".toast");
-  if (existente) existente.remove();
-  const toast = document.createElement("div");
-  toast.className = "toast" + (esError ? " error" : "");
-  toast.textContent = mensaje;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
-}
-
-// ===================== LISTA (columna izquierda) =====================
 
 function construirQuery() {
   const params = new URLSearchParams();
-  const estado = document.getElementById("f-estado").value;
-  const pagado = document.getElementById("f-pagado").value;
-  const zona = document.getElementById("f-zona").value;
-  if (estado) params.set("estado", estado);
-  if (pagado) params.set("pagado", pagado);
-  if (zona) params.set("zona_id", zona);
+  const q = document.getElementById('f-buscar').value.trim();
+  const estado = document.getElementById('f-estado').value;
+  const pagado = document.getElementById('f-pagado').value;
+  const zona = document.getElementById('f-zona').value;
+  const desde = document.getElementById('f-fecha-desde').value;
+  const hasta = document.getElementById('f-fecha-hasta').value;
+
+  if (q) params.set('q', q);
+  if (estado) params.set('estado', estado);
+  if (pagado !== '') params.set('pagado', pagado);
+  if (zona) params.set('zona_id', zona);
+  if (desde) params.set('fecha_desde', desde);
+  if (hasta) params.set('fecha_hasta', hasta);
   return params.toString();
 }
 
-async function cargarZonas() {
-  try {
-    const res = await fetch("/api/zonas");
-    if (!res.ok) return;
-    const data = await res.json();
-    const select = document.getElementById("f-zona");
-    for (const z of data.zonas) {
-      const opt = document.createElement("option");
-      opt.value = z.id;
-      opt.textContent = z.nombre + (z.activa ? "" : " (inactiva)");
-      select.appendChild(opt);
-    }
-  } catch (err) {
-    console.error("No se pudieron cargar las zonas:", err);
-  }
-}
-
-function renderLista(pedidos) {
-  const ul = document.getElementById("lista-pedidos");
-
-  if (pedidos.length === 0) {
-    ul.innerHTML = `<li class="estado-vacio">No hay pedidos con estos filtros.</li>`;
-    return;
-  }
-
-  ul.innerHTML = pedidos
-    .map(
-      (p) => `
-        <li class="fila-pedido ${p.id === pedidoSeleccionadoId ? "activa" : ""}" data-id="${p.id}">
-          <div class="fila-top">
-            <span class="numero">#${p.id}</span>
-            <span class="fecha-chip">${fmtFecha(p.fecha_entrega)}</span>
-          </div>
-          <div class="cliente">${p.cliente.nombre} ${p.cliente.apellido}</div>
-          <span class="badge ${p.pagado ? "pagado-si" : "pagado-no"}" style="margin-top:6px;">${p.pagado ? "Pagado" : "No pagado"}</span>
-        </li>
-      `
-    )
-    .join("");
-
-  ul.querySelectorAll(".fila-pedido").forEach((li) => {
-    li.addEventListener("click", () => seleccionarPedido(Number(li.dataset.id)));
-  });
-}
-
+// ---------- Lista ----------
 async function cargarLista() {
-  const ul = document.getElementById("lista-pedidos");
-  ul.innerHTML = `<li class="estado-cargando">Cargando…</li>`;
+  const contenedor = document.getElementById('lista-pedidos');
+  const estadoMsg = document.getElementById('lista-estado');
+  estadoMsg.className = 'mensaje oculto';
+  contenedor.innerHTML = '<div class="cargando" style="padding:14px;">Cargando…</div>';
+
   try {
-    const qs = construirQuery();
-    // El backend ya ordena por fecha_entrega ASC (más cercana primero).
-    const res = await fetch(`/api/pedidos${qs ? "?" + qs : ""}`);
-    if (!res.ok) {
-      ul.innerHTML = `<li class="estado-error">Error cargando pedidos</li>`;
-      return;
-    }
-    const data = await res.json();
-    renderLista(data.pedidos);
-  } catch (err) {
-    ul.innerHTML = `<li class="estado-error">Error de conexión: ${err.message}</li>`;
+    const query = construirQuery();
+    const data = await api.get(`/api/trabajos${query ? '?' + query : ''}`);
+    renderLista(data.trabajos || []);
+  } catch (e) {
+    estadoMsg.className = 'mensaje error';
+    estadoMsg.textContent = `No se pudo cargar la lista: ${e.message}`;
+    contenedor.innerHTML = '';
   }
 }
 
-function seleccionarPedido(id) {
-  pedidoSeleccionadoId = id;
-  document.querySelectorAll(".fila-pedido").forEach((li) => {
-    li.classList.toggle("activa", Number(li.dataset.id) === id);
+function renderLista(trabajos) {
+  const contenedor = document.getElementById('lista-pedidos');
+  if (trabajos.length === 0) {
+    contenedor.innerHTML = '<div class="vacio">No hay pedidos con estos filtros.</div>';
+    return;
+  }
+
+  contenedor.innerHTML = trabajos
+    .map((t) => {
+      const seleccionado = t.id === pedidoSeleccionadoId ? 'seleccionado' : '';
+      const nombre = `${escapeHtml(t.nombre)} ${escapeHtml(t.apellido)}`;
+      return `
+        <button class="pedido-item ${seleccionado}" data-id="${t.id}">
+          <div class="pedido-item-top">
+            <span class="pedido-item-cliente">${nombre}</span>
+            <span class="pedido-item-id">#${t.id}</span>
+          </div>
+          <div class="pedido-item-meta">
+            <span>${fmtFecha(t.fecha_entrega)} · ${t.zona_nombre ? escapeHtml(t.zona_nombre) : 'sin zona'}</span>
+            <span>${fmtMoneda(t.total)}</span>
+          </div>
+          <div class="pedido-item-badges">
+            <span class="badge badge-${t.estado}">${ESTADOS_LABEL[t.estado] || t.estado}</span>
+            <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
+            <span class="badge">${t.archivos_count} arch.</span>
+            ${t.tiene_error_archivos ? '<span class="badge badge-error">⚠ archivo con error</span>' : ''}
+          </div>
+        </button>
+      `;
+    })
+    .join('');
+
+  contenedor.querySelectorAll('.pedido-item').forEach((btn) => {
+    btn.addEventListener('click', () => seleccionarPedido(Number(btn.dataset.id)));
   });
-  cargarDetalle(id);
 }
 
-// ===================== DETALLE (columna derecha) =====================
+// ---------- Detalle ----------
+async function seleccionarPedido(id) {
+  pedidoSeleccionadoId = id;
+  document.querySelectorAll('.pedido-item').forEach((btn) => {
+    btn.classList.toggle('seleccionado', Number(btn.dataset.id) === id);
+  });
 
-function metaArchivo(a) {
-  return [a.rango ? `pág. ${a.rango}` : `${a.paginas} pág.`, `${a.copias} copia(s)`, a.faz, a.acabado]
-    .filter(Boolean)
-    .join(" · ");
-}
+  const col = document.getElementById('detalle-col');
+  col.innerHTML = '<div class="cargando">Cargando pedido…</div>';
 
-function urlArchivo(pedidoId, r2Key) {
-  return `/api/pedidos/${pedidoId}/archivo?key=${encodeURIComponent(r2Key)}`;
-}
-
-function renderArchivoCard(pedidoId, archivo, index) {
-  if (archivo.error_confirmacion || !archivo.r2_key) {
-    return `
-      <div class="archivo-card">
-        <div class="thumb-wrap"><span class="thumb-placeholder">⚠ sin archivo</span></div>
-        <div class="info">
-          <div class="nombre">${archivo.nombre || "(sin nombre)"}</div>
-          <div class="archivo-error">${archivo.error_confirmacion || "No tiene r2_key válido"}</div>
-        </div>
-      </div>
-    `;
+  try {
+    const data = await api.get(`/api/trabajos/${id}`);
+    renderDetalle(data);
+  } catch (e) {
+    col.innerHTML = `<div class="mensaje error">No se pudo cargar el pedido: ${e.message}</div>`;
   }
-
-  const precio = archivo.precio
-    ? `${fmtMoneda(archivo.precio.total)} <span style="color:var(--gris-texto);">(${archivo.precio.producto_secundario || "sin acabado"})</span>`
-    : "";
-
-  return `
-    <div class="archivo-card" data-thumb-index="${index}">
-      <div class="thumb-wrap" id="thumb-${index}"><span class="thumb-placeholder">cargando…</span></div>
-      <div class="info">
-        <div class="nombre">${archivo.nombre}</div>
-        <div class="config">${metaArchivo(archivo)}</div>
-        ${precio ? `<div class="precio">${precio}</div>` : ""}
-        <button class="btn-abrir" data-url="${urlArchivo(pedidoId, archivo.r2_key)}">Abrir</button>
-      </div>
-    </div>
-  `;
 }
 
-async function generarThumbnail(index, archivo, pedidoId) {
-  const contenedor = document.getElementById(`thumb-${index}`);
-  if (!contenedor || !archivo.r2_key) return;
+function renderDetalle(data) {
+  const { trabajo: t, archivos, items, pagos } = data;
+  const col = document.getElementById('detalle-col');
 
-  const ext = extension(archivo.nombre);
-  const url = urlArchivo(pedidoId, archivo.r2_key);
+  const botonesEstado = ESTADOS_ORDEN.map((estado) => {
+    const activo = estado === t.estado ? 'primario' : '';
+    return `<button class="chico ${activo}" data-estado="${estado}">${ESTADOS_LABEL[estado]}</button>`;
+  }).join('');
 
-  if (EXT_IMAGEN.includes(ext)) {
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = archivo.nombre;
-    img.onerror = () => {
-      contenedor.innerHTML = `<span class="thumb-placeholder">no se pudo cargar</span>`;
-    };
-    contenedor.innerHTML = "";
-    contenedor.appendChild(img);
-    return;
-  }
+  const turnoTexto =
+    t.dia_semana !== null && t.dia_semana !== undefined
+      ? `${DIAS[t.dia_semana]} ${t.hora_inicio || ''}–${t.hora_fin || ''}`
+      : '—';
 
-  if (ext === "pdf") {
-    if (!window.pdfjsLib) {
-      contenedor.innerHTML = `<span class="thumb-placeholder">PDF</span>`;
-      return;
-    }
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("no se pudo leer el archivo");
-      const buffer = await res.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      const page = await pdf.getPage(1);
-      const viewportBase = page.getViewport({ scale: 1 });
-      const scale = 190 / viewportBase.width;
-      const viewport = page.getViewport({ scale });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d");
-      await page.render({ canvasContext: ctx, viewport }).promise;
-
-      contenedor.innerHTML = "";
-      contenedor.appendChild(canvas);
-    } catch (err) {
-      contenedor.innerHTML = `<span class="thumb-placeholder">sin vista previa</span>`;
-      console.error(`Miniatura de "${archivo.nombre}" falló:`, err);
-    }
-    return;
-  }
-
-  contenedor.innerHTML = `<span class="thumb-placeholder">${ext.toUpperCase() || "archivo"}</span>`;
-}
-
-function abrirTodos(pedido) {
-  const validos = pedido.archivos.filter((a) => a.r2_key && !a.error_confirmacion);
-  if (validos.length === 0) {
-    mostrarToast("No hay archivos válidos para abrir", true);
-    return;
-  }
-  validos.forEach((a) => window.open(urlArchivo(pedido.id, a.r2_key), "_blank"));
-}
-
-function render(pedido) {
-  const detalle = document.getElementById("detalle");
-  const turno = pedido.turno
-    ? `${DIA_LABEL[pedido.turno.dia_semana]} ${pedido.turno.hora_inicio}–${pedido.turno.hora_fin}`
-    : "—";
-
-  const opcionesEstado = Object.entries(ESTADO_LABEL)
-    .map(([valor, label]) => `<option value="${valor}" ${valor === pedido.estado ? "selected" : ""}>${label}</option>`)
-    .join("");
-
-  const alertaConfig = pedido.configuracion_corrupta
-    ? `<div class="archivo-error" style="margin-bottom:14px;">⚠ No se pudo leer la configuración de este pedido (JSON corrupto). Revisar a mano.</div>`
-    : "";
-
-  detalle.innerHTML = `
-    ${alertaConfig}
+  col.innerHTML = `
     <div class="detalle-header">
       <div>
-        <h1>Pedido #${pedido.id}</h1>
-        <p class="subtitulo">Creado ${fmtFechaHora(pedido.creado_en)} · actualizado ${fmtFechaHora(pedido.actualizado_en)}</p>
+        <h1>Pedido #${t.id} — ${escapeHtml(t.nombre)} ${escapeHtml(t.apellido)}</h1>
+        <div class="detalle-cliente-info">
+          ${t.documento_tipo.toUpperCase()} ${escapeHtml(t.documento_numero)}
+          ${t.email ? ' · ' + escapeHtml(t.email) : ''}
+          ${t.celular ? ' · ' + escapeHtml(t.celular) : ''}
+        </div>
       </div>
-      <div class="estado-form">
-        <select id="select-estado">${opcionesEstado}</select>
-        <button class="primary" id="btn-guardar-estado">Guardar</button>
+      <div class="detalle-estado-acciones">
+        <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
+        <div class="detalle-estado-botones" id="botones-estado">${botonesEstado}</div>
       </div>
     </div>
 
-    <div class="grid-cards">
-      <div class="card">
-        <h2>Cliente</h2>
-        <dl>
-          <dt>Nombre</dt><dd>${pedido.cliente.nombre} ${pedido.cliente.apellido}</dd>
-          <dt>Documento</dt><dd>${pedido.cliente.documento}</dd>
-          <dt>Email</dt><dd>${pedido.cliente.email || "—"}</dd>
-          <dt>Celular</dt><dd>${pedido.cliente.celular || "—"}</dd>
-        </dl>
-      </div>
-      <div class="card">
+    <div class="detalle-grid">
+      <div class="detalle-bloque">
         <h2>Entrega</h2>
         <dl>
-          <dt>Dirección</dt><dd>${pedido.direccion_entrega || "—"}</dd>
-          <dt>Zona</dt><dd>${pedido.zona ? pedido.zona.nombre : "—"}</dd>
-          <dt>Turno</dt><dd>${turno}</dd>
-          <dt>Fecha de entrega</dt><dd>${pedido.fecha_entrega || "—"}</dd>
+          <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || t.cliente_direccion || '—')}</dd>
+          <dt>Zona</dt><dd>${escapeHtml(t.zona_nombre || '—')}</dd>
+          <dt>Turno</dt><dd>${turnoTexto}</dd>
+          <dt>Fecha entrega</dt><dd>${fmtFecha(t.fecha_entrega)}</dd>
         </dl>
       </div>
-      <div class="card">
-        <h2>Pago</h2>
-        <p style="margin:0 0 8px 0;"><span class="badge ${pedido.pagado ? "pagado-si" : "pagado-no"}">${pedido.pagado ? "Pagado" : "No pagado"}</span></p>
-        <dl><dt>Total</dt><dd>${fmtMoneda(pedido.total)}</dd></dl>
+      <div class="detalle-bloque">
+        <h2>Pedido</h2>
+        <dl>
+          <dt>Creado</dt><dd>${fmtFechaHora(t.creado_en)}</dd>
+          <dt>Actualizado</dt><dd>${fmtFechaHora(t.actualizado_en)}</dd>
+          <dt>Total</dt><dd>${fmtMoneda(t.total)}</dd>
+          <dt>Observaciones</dt><dd>${escapeHtml(t.observaciones || '—')}</dd>
+        </dl>
       </div>
     </div>
 
-    ${pedido.observaciones ? `<div class="seccion"><h2>Observaciones</h2><p>${pedido.observaciones}</p></div>` : ""}
-
-    <div class="seccion">
-      <div class="seccion-archivos-header">
-        <h2 style="margin:0;">Archivos (${pedido.archivos.length})</h2>
-        <button id="btn-abrir-todos">Abrir todos en pestañas nuevas</button>
+    <h2>Archivos (${archivos.length})</h2>
+    <div class="archivos-header">
+      <span class="cargando" style="font-style:normal;color:var(--gris-texto);font-size:12px;">
+        ${archivos.length === 0 ? 'Este pedido no tiene archivos.' : 'Clic en un archivo para abrirlo individualmente.'}
+      </span>
+      <div class="archivos-acciones-grupales">
+        <button class="chico" id="btn-abrir-todos" ${archivos.length === 0 ? 'disabled' : ''}>Abrir todos (pestañas)</button>
+        <button class="chico acento" id="btn-descargar-zip" ${archivos.length === 0 ? 'disabled' : ''}>Descargar todos (.zip)</button>
       </div>
-      <div class="grid-archivos">
-        ${pedido.archivos.map((a, i) => renderArchivoCard(pedido.id, a, i)).join("")}
+    </div>
+    <div class="archivos-grid" id="archivos-grid">
+      ${archivos.map((a) => archivoCardHtml(t.id, a)).join('')}
+    </div>
+
+    <h2>Detalle del pedido</h2>
+    <table class="items-tabla">
+      <thead>
+        <tr>
+          <th>Archivo</th><th class="num">Carillas</th><th class="num">Copias</th>
+          <th>Producto secundario</th><th class="num">Subtotal 1º</th><th class="num">Subtotal 2º</th><th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items
+          .map(
+            (it) => `
+          <tr>
+            <td>${escapeHtml(it.nombre)}</td>
+            <td class="num">${it.carillas ?? '—'}</td>
+            <td class="num">${it.copias ?? '—'}</td>
+            <td>${escapeHtml(it.producto_secundario || '—')}</td>
+            <td class="num">${fmtMoneda(it.subtotal_primario)}</td>
+            <td class="num">${fmtMoneda(it.subtotal_secundario)}</td>
+            <td class="num">${fmtMoneda(it.total)}</td>
+          </tr>`
+          )
+          .join('')}
+        <tr class="total-row">
+          <td colspan="6">Total del pedido</td>
+          <td class="num">${fmtMoneda(t.total)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 style="margin-top:24px;">Pagos</h2>
+    ${
+      pagos.length === 0
+        ? '<div class="vacio" style="padding:14px 0;">Sin pagos registrados todavía.</div>'
+        : `<table class="pagos-tabla">
+            <thead><tr><th>Fecha</th><th>Estado MP</th><th>Detalle</th><th>Tipo</th><th class="num">Monto</th></tr></thead>
+            <tbody>
+              ${pagos
+                .map(
+                  (p) => `<tr>
+                    <td>${fmtFechaHora(p.creado_en)}</td>
+                    <td>${escapeHtml(p.mp_status || '—')}</td>
+                    <td>${escapeHtml(p.mp_status_detail || '—')}</td>
+                    <td>${escapeHtml(p.mp_payment_type || '—')}</td>
+                    <td class="num">${fmtMoneda(p.monto)}</td>
+                  </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>`
+    }
+  `;
+
+  // eventos de cambio de estado
+  document.querySelectorAll('#botones-estado button').forEach((btn) => {
+    btn.addEventListener('click', () => cambiarEstado(t.id, btn.dataset.estado));
+  });
+
+  // eventos de archivos individuales
+  document.querySelectorAll('.archivo-abrir').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      window.open(urlArchivo(t.id, btn.dataset.key, false), '_blank');
+    });
+  });
+  document.querySelectorAll('.archivo-descargar').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      window.open(urlArchivo(t.id, btn.dataset.key, true), '_blank');
+    });
+  });
+
+  // acciones grupales
+  const btnAbrirTodos = document.getElementById('btn-abrir-todos');
+  if (btnAbrirTodos) {
+    btnAbrirTodos.addEventListener('click', () => {
+      archivos.forEach((a) => {
+        if (a.r2_key) window.open(urlArchivo(t.id, a.r2_key, false), '_blank');
+      });
+    });
+  }
+  const btnZip = document.getElementById('btn-descargar-zip');
+  if (btnZip) {
+    btnZip.addEventListener('click', () => descargarZip(t.id, archivos, btnZip));
+  }
+}
+
+function archivoCardHtml(trabajoId, archivo) {
+  const tieneError = !!archivo.error_confirmacion;
+  const ext = (archivo.nombre || '').split('.').pop().toLowerCase();
+  let claseIcono = 'doc';
+  let etiquetaIcono = ext.slice(0, 3) || '?';
+  if (ext === 'pdf') claseIcono = 'pdf';
+  else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) claseIcono = 'img';
+
+  const meta = [
+    archivo.paginas ? `${archivo.paginas} pág.` : null,
+    archivo.copias ? `${archivo.copias} cop.` : null,
+    archivo.acabado || null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return `
+    <div class="archivo-card ${tieneError ? 'con-error' : ''}">
+      <div class="archivo-miniatura ${claseIcono}">${escapeHtml(etiquetaIcono)}</div>
+      <div class="archivo-info">
+        <div class="archivo-nombre">${escapeHtml(archivo.nombre)}</div>
+        <div class="archivo-meta">${meta || '—'}</div>
+        ${tieneError ? `<div class="mensaje error" style="padding:4px 6px;font-size:11px;margin-bottom:6px;">⚠ ${escapeHtml(archivo.error_confirmacion)}</div>` : ''}
+        ${
+          archivo.r2_key
+            ? `<div class="archivo-acciones">
+                <button class="chico archivo-abrir" data-key="${escapeHtml(archivo.r2_key)}">Abrir</button>
+                <button class="chico archivo-descargar" data-key="${escapeHtml(archivo.r2_key)}">Descargar</button>
+              </div>`
+            : '<div class="archivo-acciones" style="color:var(--rojo);font-size:11px;">No disponible en el bucket</div>'
+        }
       </div>
     </div>
   `;
-
-  document.getElementById("btn-guardar-estado").addEventListener("click", () => guardarEstado(pedido.id));
-  document.getElementById("btn-abrir-todos").addEventListener("click", () => abrirTodos(pedido));
-
-  detalle.querySelectorAll(".btn-abrir").forEach((btn) => {
-    btn.addEventListener("click", () => window.open(btn.dataset.url, "_blank"));
-  });
-
-  // Miniaturas: se generan después de pintar el HTML, en paralelo, sin
-  // bloquear el resto de la vista.
-  pedido.archivos.forEach((a, i) => generarThumbnail(i, a, pedido.id));
 }
 
-async function cargarDetalle(id) {
-  const detalle = document.getElementById("detalle");
-  detalle.innerHTML = `<div class="estado-cargando">Cargando pedido #${id}…</div>`;
-  try {
-    const res = await fetch(`/api/pedidos/${id}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      detalle.innerHTML = `<div class="estado-error">Error cargando el pedido: ${err.error || res.status}</div>`;
-      return;
-    }
-    const data = await res.json();
-    render(data.pedido || data); // por si el endpoint devuelve el objeto plano
-  } catch (err) {
-    detalle.innerHTML = `<div class="estado-error">Error de conexión: ${err.message}</div>`;
-  }
+function urlArchivo(trabajoId, key, forzarDescarga) {
+  const params = new URLSearchParams({ trabajo_id: trabajoId, key });
+  if (forzarDescarga) params.set('dl', '1');
+  return `/api/archivos?${params.toString()}`;
 }
 
-async function guardarEstado(id) {
-  const select = document.getElementById("select-estado");
-  const boton = document.getElementById("btn-guardar-estado");
-  const nuevoEstado = select.value;
+async function descargarZip(trabajoId, archivos, boton) {
+  const keys = archivos.map((a) => a.r2_key).filter(Boolean);
+  if (keys.length === 0) return;
 
+  const textoOriginal = boton.textContent;
   boton.disabled = true;
-  boton.textContent = "Guardando…";
+  boton.textContent = 'Armando .zip…';
 
   try {
-    const res = await fetch(`/api/pedidos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: nuevoEstado }),
+    const res = await fetch('/api/archivos/zip', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ trabajo_id: trabajoId, keys }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      mostrarToast(err.error || "No se pudo actualizar el estado", true);
-      return;
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Error ${res.status}`);
     }
-    mostrarToast(`Estado actualizado a "${ESTADO_LABEL[nuevoEstado]}"`);
-    await cargarDetalle(id);
-    await cargarLista(); // por si hay un filtro de estado activo
-  } catch (err) {
-    mostrarToast("Error de conexión: " + err.message, true);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pedido-${trabajoId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(`No se pudo generar el .zip: ${e.message}`);
   } finally {
     boton.disabled = false;
-    boton.textContent = "Guardar";
+    boton.textContent = textoOriginal;
   }
 }
 
-// ===================== Arranque =====================
-
-(async () => {
-  /* await window.panelAuth.requireAuth();
-
-  const user = await window.panelAuth.getUser();
-  if (user) document.getElementById("user-email").textContent = user.email || "";
-  document.getElementById("btn-logout").addEventListener("click", () => window.panelAuth.logout());
-*/
-  ["f-estado", "f-pagado", "f-zona"].forEach((id) => {
-    document.getElementById(id).addEventListener("change", cargarLista);
-  });
-  document.getElementById("btn-limpiar").addEventListener("click", () => {
-    document.getElementById("f-estado").value = "";
-    document.getElementById("f-pagado").value = "";
-    document.getElementById("f-zona").value = "";
-    cargarLista();
-  });
-
-  await cargarZonas();
-  await cargarLista();
-})();
+async function cambiarEstado(id, estado) {
+  try {
+    await api.patch(`/api/trabajos/${id}`, { estado });
+    await seleccionarPedido(id);
+    await cargarLista();
+  } catch (e) {
+    alert(`No se pudo cambiar el estado: ${e.message}`);
+  }
+}

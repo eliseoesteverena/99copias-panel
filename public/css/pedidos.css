@@ -1,0 +1,237 @@
+.pedidos-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: calc(100vh - 49px); /* alto de la ventana menos el top-nav */
+}
+
+/* ---------- Columna de lista ---------- */
+
+.pedidos-lista-col {
+  border-right: 1px solid var(--negro);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-bottom: 1px solid var(--gris-borde);
+}
+
+.filtros-fechas {
+  display: flex;
+  gap: 6px;
+}
+
+.filtros-fechas input { flex: 1; min-width: 0; }
+
+.lista-pedidos {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pedido-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--gris-borde);
+  background: #fff;
+  cursor: pointer;
+}
+
+.pedido-item:hover { background: var(--gris-suave); }
+
+.pedido-item.seleccionado {
+  background: var(--gris-suave);
+  border-left: 3px solid var(--azul);
+}
+
+.pedido-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.pedido-item-cliente {
+  font-weight: 600;
+}
+
+.pedido-item-id {
+  color: var(--gris-texto);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.pedido-item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--gris-texto);
+}
+
+.pedido-item-badges {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Columna de detalle ---------- */
+
+.pedidos-detalle-col {
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--negro);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.detalle-header h1 { margin: 0 0 4px 0; }
+
+.detalle-cliente-info {
+  color: var(--gris-texto);
+  font-size: 13px;
+}
+
+.detalle-estado-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.detalle-estado-botones {
+  display: flex;
+  gap: 4px;
+}
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.detalle-bloque {
+  border: 1px solid var(--gris-borde);
+  padding: 12px 14px;
+}
+
+.detalle-bloque h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--gris-texto);
+  margin: 0 0 8px 0;
+}
+
+.detalle-bloque dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+.detalle-bloque dt { color: var(--gris-texto); }
+.detalle-bloque dd { margin: 0; }
+
+/* ---------- Archivos ---------- */
+
+.archivos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.archivos-acciones-grupales { display: flex; gap: 6px; }
+
+.archivos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.archivo-card {
+  border: 1px solid var(--gris-borde);
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.archivo-card.con-error { border-color: var(--rojo); background: #fdeceb; }
+
+.archivo-miniatura {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 1px solid var(--gris-borde);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--gris-texto);
+}
+
+.archivo-miniatura.pdf { background: #b3261e; }
+.archivo-miniatura.img { background: #0055a4; }
+.archivo-miniatura.doc { background: #1e7a3f; }
+
+.archivo-info { flex: 1; min-width: 0; }
+
+.archivo-nombre {
+  font-weight: 600;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.archivo-meta {
+  font-size: 11px;
+  color: var(--gris-texto);
+  margin: 2px 0 6px 0;
+}
+
+.archivo-acciones {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Items / factura ---------- */
+
+table.items-tabla td, table.items-tabla th { font-size: 13px; }
+table.items-tabla td.num, table.items-tabla th.num { text-align: right; }
+
+.total-row td {
+  font-weight: 700;
+  border-top: 1px solid var(--negro);
+  border-bottom: none;
+}
+
+/* ---------- Pagos ---------- */
+
+.pagos-tabla td, .pagos-tabla th { font-size: 12px; }
+
+@media (max-width: 900px) {
+  .pedidos-layout { grid-template-columns: 1fr; height: auto; }
+  .pedidos-lista-col { border-right: none; border-bottom: 1px solid var(--negro); }
+  .detalle-grid { grid-template-columns: 1fr; }
+}

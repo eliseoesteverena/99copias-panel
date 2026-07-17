@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precios — Panel 99copias</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="marca">99copias · admin</div>
+  <nav>
+    <a href="/index.html">Pedidos</a>
+    <a href="/precios.html" class="activo">Precios</a>
+    <a href="/turnos.html">Turnos de entrega</a>
+  </nav>
+</header>
+
+<div class="pagina">
+  <h1>ABM de precios</h1>
+  <p style="color:var(--gris-texto);font-size:13px;max-width:700px;">
+    Editar el precio acá no modifica pedidos ya creados — el total y el detalle de
+    pedidos existentes quedan congelados como comprobante. Solo puede haber un
+    producto <strong>primario</strong> habilitado a la vez.
+  </p>
+
+  <div id="estado" class="mensaje oculto"></div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="primario" id="btn-nuevo">+ Nuevo producto</button>
+  </div>
+
+  <table id="tabla-productos">
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th>Unidad</th>
+        <th>Jerarquía</th>
+        <th class="num">Precio</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody-productos">
+      <tr><td colspan="6" class="cargando">Cargando…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ---------- Modal alta/edición ---------- -->
+<div class="modal-fondo oculto" id="modal-fondo">
+  <div class="modal">
+    <h2 id="modal-titulo">Nuevo producto</h2>
+    <form id="form-producto">
+      <input type="hidden" id="p-id">
+      <div class="campo">
+        <label for="p-descripcion">Descripción</label>
+        <input type="text" id="p-descripcion" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label for="p-unidad">Unidad de medida</label>
+        <input type="text" id="p-unidad" required style="width:100%;" placeholder="ej: carilla, unidad">
+      </div>
+      <div class="campo">
+        <label for="p-jerarquia">Jerarquía</label>
+        <select id="p-jerarquia" style="width:100%;">
+          <option value="primario">Primario</option>
+          <option value="secundario" selected>Secundario</option>
+          <option value="terciario">Terciario</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="p-precio">Precio</label>
+        <input type="number" id="p-precio" step="0.01" min="0" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="p-habilitado" checked style="width:auto;">
+          Habilitado
+        </label>
+      </div>
+      <div id="modal-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" id="btn-cancelar">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/precios.js"></script>
+</body>
+</html>
