@@ -80,7 +80,7 @@ export async function onRequestGet(context) {
     LEFT JOIN zonas z            ON z.id = t.zona_id
     LEFT JOIN turnos_entrega te  ON te.id = t.turno_entrega_id
     ${whereClause}
-    ORDER BY t.creado_en DESC
+    ORDER BY (t.fecha_entrega IS NULL), t.fecha_entrega ASC, t.creado_en ASC
     LIMIT 200
   `;
 

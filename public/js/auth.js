@@ -1,7 +1,11 @@
 // public/js/auth.js
 //
-// Wrapper chico sobre @auth0/auth0-spa-js (cargado por CDN en el <script>
-// del HTML). Expone window.panelAuth con lo que necesitan las demás páginas.
+// Seguridad simplificada a propósito: el login de Auth0 es la ÚNICA puerta.
+// No hay verificación de token en cada request a /api/* — las funciones del
+// backend son de lectura/escritura directa una vez que entraste al panel.
+// Esto es una decisión consciente para una herramienta interna de bajo
+// volumen; si en algún momento el panel queda expuesto a más gente o se
+// vuelve sensible, reforzar esto es el primer paso.
 
 let auth0Client = null;
 
@@ -11,11 +15,13 @@ async function getClient() {
       domain: window.AUTH0_CONFIG.domain,
       clientId: window.AUTH0_CONFIG.clientId,
       authorizationParams: {
-        audience: window.AUTH0_CONFIG.audience,
         redirect_uri: window.AUTH0_CONFIG.redirectUri,
       },
-      cacheLocation: "localstorage", // sobrevive a recargas de página
-      useRefreshTokens: true,
+      // localstorage (en vez de "memory", que es el default) para que la
+      // sesión sobreviva a la navegación entre páginas — este es un sitio
+      // multi-página estático, no una SPA con router, así que cada página
+      // crea un cliente nuevo y necesita poder leer la sesión de algún lado.
+      cacheLocation: "localstorage",
     });
   }
   return auth0Client;
@@ -32,20 +38,8 @@ async function logout() {
 }
 
 async function handleRedirectCallback() {
-  const params = new URLSearchParams(window.location.search);
-
-  // Auth0 volvió con un error (ej. callback URL mal configurada, usuario
-  // canceló, etc). Si no distinguimos esto, requireAuth() interpretaría
-  // "no autenticado" y llamaría a login() de nuevo → loop infinito de
-  // redirects entre el panel y Auth0.
-  if (params.has("error")) {
-    const desc = params.get("error_description") || params.get("error");
-    window.history.replaceState({}, document.title, window.location.pathname);
-    throw new Error("Auth0 devolvió un error en el login: " + desc);
-  }
-
-  if (params.has("code") && params.has("state")) {
-    const client = await getClient();
+  const client = await getClient();
+  if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
     await client.handleRedirectCallback();
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -61,57 +55,16 @@ async function getUser() {
   return client.getUser();
 }
 
-async function getToken() {
-  const client = await getClient();
-  return client.getTokenSilently();
-}
-
 /**
- * Llamar al principio de cualquier página protegida (ej. pedidos.html).
- * Si no hay sesión, redirige al login. Si vuelve de un redirect de Auth0
- * (?code=&state=), procesa el callback primero. Si Auth0 volvió con
- * ?error=..., tira una excepción legible en vez de reintentar el login.
- *
- * @returns {Promise<boolean>} true si está redirigiendo a Auth0 ahora mismo
- *   (el caller no debe seguir ejecutando nada más).
+ * Llamar al principio de cualquier página protegida. Si no hay sesión,
+ * manda al login. Esta es la única verificación de todo el sistema.
  */
 async function requireAuth() {
   await handleRedirectCallback();
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     await login();
-    return true;
   }
-  return false;
 }
 
-/**
- * Wrapper de fetch que agrega el Bearer token automáticamente.
- * Si el token vence / la sesión es inválida, redirige al login.
- */
-async function apiFetch(path, options = {}) {
-  let token;
-  try {
-    token = await getToken();
-  } catch (err) {
-    await login();
-    throw err;
-  }
-
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (res.status === 401) {
-    await login();
-    throw new Error("Sesión vencida, redirigiendo al login");
-  }
-
-  return res;
-}
-
-window.panelAuth = { login, logout, requireAuth, isAuthenticated, getUser, getToken, apiFetch };
+window.panelAuth = { login, logout, requireAuth, isAuthenticated, getUser };

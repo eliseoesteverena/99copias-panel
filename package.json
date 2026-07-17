@@ -1,8 +1,5 @@
 {
   "name": "99copias-panel",
   "private": true,
-  "version": "0.1.0",
-  "dependencies": {
-    "jose": "^5.9.6"
-  }
+  "version": "0.1.0"
 }

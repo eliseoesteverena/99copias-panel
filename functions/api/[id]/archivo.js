@@ -4,6 +4,8 @@
 //
 // El bucket R2 es privado (sección 6 del contexto): no hay URLs públicas.
 // Esta Function lee el objeto con el binding y lo devuelve como response.
+// Content-Disposition: inline a propósito — el panel abre los archivos en
+// una pestaña nueva para verlos (PDF/imagen), no los descarga.
 //
 // Validaciones antes de tocar R2 (defensa en profundidad, no solo confiar
 // en que el frontend mande una key "razonable"):
@@ -55,8 +57,24 @@ export async function onRequestGet(context) {
 
     const headers = new Headers();
     objeto.writeHttpMetadata(headers);
-    headers.set("Content-Disposition", `attachment; filename="${(archivo.nombre || "archivo").replace(/"/g, "")}"`);
-    if (!headers.get("Content-Type")) headers.set("Content-Type", "application/octet-stream");
+    // "inline" para que el navegador lo muestre en la pestaña (PDF/imagen)
+    // en vez de bajarlo. Si el content-type no vino guardado en R2, lo
+    // adivinamos por extensión así al menos los PDF/imagenes comunes rendericen.
+    const nombreLimpio = (archivo.nombre || "archivo").replace(/"/g, "");
+    headers.set("Content-Disposition", `inline; filename="${nombreLimpio}"`);
+    if (!headers.get("Content-Type")) {
+      const ext = nombreLimpio.split(".").pop().toLowerCase();
+      const porExtension = {
+        pdf: "application/pdf",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+      };
+      headers.set("Content-Type", porExtension[ext] || "application/octet-stream");
+    }
+    headers.set("Cache-Control", "private, max-age=300");
     headers.set("Content-Length", String(objeto.size));
 
     return new Response(objeto.body, { headers });
