@@ -368,12 +368,12 @@ async function guardarEstado(id) {
 // ===================== Arranque =====================
 
 (async () => {
-  await window.panelAuth.requireAuth();
+  /* await window.panelAuth.requireAuth();
 
   const user = await window.panelAuth.getUser();
   if (user) document.getElementById("user-email").textContent = user.email || "";
   document.getElementById("btn-logout").addEventListener("click", () => window.panelAuth.logout());
-
+*/
   ["f-estado", "f-pagado", "f-zona"].forEach((id) => {
     document.getElementById(id).addEventListener("change", cargarLista);
   });
