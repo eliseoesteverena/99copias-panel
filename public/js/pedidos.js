@@ -16,6 +16,7 @@ const ESTADOS_LABEL = {
 // ---------- Init ----------
 document.addEventListener('DOMContentLoaded', () => {
   cargarZonasFiltro();
+  cargarCategoriasFiltro();
   cargarProductosCache();
   cargarLista();
 
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearTimeout(debounceBusqueda);
     debounceBusqueda = setTimeout(cargarLista, 300);
   });
-  ['f-estado', 'f-pagado', 'f-zona', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
+  ['f-estado', 'f-pagado', 'f-zona', 'f-categoria', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
     document.getElementById(id).addEventListener('change', cargarLista);
   });
   document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
@@ -31,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('f-estado').value = '';
     document.getElementById('f-pagado').value = '';
     document.getElementById('f-zona').value = '';
+    document.getElementById('f-categoria').value = '';
     document.getElementById('f-fecha-desde').value = '';
     document.getElementById('f-fecha-hasta').value = '';
     cargarLista();
@@ -52,6 +54,21 @@ async function cargarZonasFiltro() {
   }
 }
 
+async function cargarCategoriasFiltro() {
+  try {
+    const data = await api.get('/api/categorias');
+    const select = document.getElementById('f-categoria');
+    (data.categorias || []).forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.nombre;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    // el filtro de categoría simplemente no se completa, no es crítico
+  }
+}
+
 async function cargarProductosCache() {
   try {
     const data = await api.get('/api/productos');
@@ -70,6 +87,7 @@ function construirQuery() {
   const estado = document.getElementById('f-estado').value;
   const pagado = document.getElementById('f-pagado').value;
   const zona = document.getElementById('f-zona').value;
+  const categoria = document.getElementById('f-categoria').value;
   const desde = document.getElementById('f-fecha-desde').value;
   const hasta = document.getElementById('f-fecha-hasta').value;
 
@@ -77,6 +95,7 @@ function construirQuery() {
   if (estado) params.set('estado', estado);
   if (pagado !== '') params.set('pagado', pagado);
   if (zona) params.set('zona_id', zona);
+  if (categoria) params.set('categoria_id', categoria);
   if (desde) params.set('fecha_desde', desde);
   if (hasta) params.set('fecha_hasta', hasta);
   return params.toString();
@@ -124,6 +143,7 @@ function renderLista(trabajos) {
           <div class="pedido-item-badges">
             <span class="badge badge-${t.estado}">${ESTADOS_LABEL[t.estado] || t.estado}</span>
             <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
+            ${t.categoria_nombre ? `<span class="badge">${escapeHtml(t.categoria_nombre)}</span>` : ''}
             <span class="badge">${t.archivos_count} arch.</span>
             ${t.tiene_error_archivos ? '<span class="badge badge-error">⚠ archivo con error</span>' : ''}
           </div>
@@ -198,6 +218,7 @@ function renderDetalle(data) {
       <div class="detalle-bloque">
         <h2>Pedido</h2>
         <dl>
+          <dt>Categoría</dt><dd>${escapeHtml(t.categoria_nombre || '—')}</dd>
           <dt>Creado</dt><dd>${fmtFechaHora(t.creado_en)}</dd>
           <dt>Actualizado</dt><dd>${fmtFechaHora(t.actualizado_en)}</dd>
           <dt>Total</dt><dd>${fmtMoneda(t.total)}</dd>

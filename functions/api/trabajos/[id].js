@@ -11,15 +11,17 @@ export async function onRequestGet({ params, env }) {
       `SELECT
         t.id, t.estado, t.total, t.direccion_entrega, t.fecha_entrega,
         t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
-        t.configuracion, t.zona_id, t.turno_entrega_id,
+        t.configuracion, t.zona_id, t.turno_entrega_id, t.categoria_id,
         c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
         c.documento_numero, c.email, c.celular, c.direccion as cliente_direccion,
         z.nombre as zona_nombre,
-        te.dia_semana, te.hora_inicio, te.hora_fin
+        te.dia_semana, te.hora_inicio, te.hora_fin,
+        cat.nombre as categoria_nombre
       FROM trabajos t
       JOIN clientes c ON c.id = t.cliente_id
       LEFT JOIN zonas z ON z.id = t.zona_id
       LEFT JOIN turnos_entrega te ON te.id = t.turno_entrega_id
+      LEFT JOIN categorias cat ON cat.id = t.categoria_id
       WHERE t.id = ?`
     )
       .bind(id)

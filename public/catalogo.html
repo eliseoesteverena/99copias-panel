@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo — Panel 99copias</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/turnos.css">
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="marca">99copias · admin</div>
+  <nav>
+    <a href="/index.html">Pedidos</a>
+    <a href="/catalogo.html" class="activo">Catálogo</a>
+    <a href="/turnos.html">Turnos de entrega</a>
+  </nav>
+</header>
+
+<div class="pagina">
+  <h1>Categorías, productos y reglas de producción</h1>
+  <p style="color:var(--gris-texto);font-size:13px;max-width:760px;margin-top:-8px;">
+    Editar un precio o una regla acá no modifica pedidos ya creados — el total y
+    el detalle de pedidos existentes quedan congelados como comprobante. El
+    <strong>código</strong> de una categoría o producto no se puede editar una vez
+    creado (es lo que usa el cálculo de precio para identificarlos).
+  </p>
+
+  <div id="estado-global" class="mensaje oculto"></div>
+
+  <!-- ===================== CATEGORÍAS ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Categorías</h2>
+      <button class="chico primario" id="btn-nueva-categoria">+ Nueva categoría</button>
+    </div>
+    <table>
+      <thead><tr><th>Código</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbody-categorias"><tr><td colspan="4" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== PRODUCTOS ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Productos</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="filtro-categoria-productos"><option value="">Todas las categorías</option></select>
+        <button class="chico primario" id="btn-nuevo-producto">+ Nuevo producto</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th><th>Descripción</th><th>Categoría</th><th>Unidad</th>
+          <th>Jerarquía</th><th class="num">Precio</th><th>Mín. páginas</th><th>Estado</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-productos"><tr><td colspan="9" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== REGLAS DE PRODUCCIÓN ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Reglas de producción</h2>
+      <button class="chico primario" id="btn-nueva-regla">+ Nueva regla</button>
+    </div>
+    <p style="color:var(--gris-texto);font-size:12px;margin-top:-4px;">
+      Tiempo mínimo de anticipación (horas corridas) según la cantidad total de
+      carillas del pedido, por categoría.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Categoría</th><th>Carillas desde</th><th>Carillas hasta</th><th>Horas mínimas</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody id="tbody-reglas"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
+</div>
+
+<!-- ===================== MODAL CATEGORÍA ===================== -->
+<div class="modal-fondo oculto" id="modal-categoria-fondo">
+  <div class="modal">
+    <h2 id="modal-categoria-titulo">Nueva categoría</h2>
+    <form id="form-categoria">
+      <input type="hidden" id="cat-id">
+      <div class="campo">
+        <label for="cat-codigo">Código (slug, ej: impresion-rapida)</label>
+        <input type="text" id="cat-codigo" required style="width:100%;" pattern="[a-z0-9-]+" placeholder="impresion-rapida">
+      </div>
+      <div class="campo">
+        <label for="cat-nombre">Nombre</label>
+        <input type="text" id="cat-nombre" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="cat-activa" checked style="width:auto;"> Activa
+        </label>
+      </div>
+      <div id="modal-categoria-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-categoria-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL PRODUCTO ===================== -->
+<div class="modal-fondo oculto" id="modal-producto-fondo">
+  <div class="modal">
+    <h2 id="modal-producto-titulo">Nuevo producto</h2>
+    <form id="form-producto">
+      <input type="hidden" id="p-id">
+      <div class="campo">
+        <label for="p-codigo">Código (estable, ej: byn_a4)</label>
+        <input type="text" id="p-codigo" required style="width:100%;" pattern="[a-z0-9_-]+" placeholder="byn_a4">
+      </div>
+      <div class="campo">
+        <label for="p-descripcion">Descripción</label>
+        <input type="text" id="p-descripcion" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label for="p-unidad">Unidad de medida</label>
+        <input type="text" id="p-unidad" required style="width:100%;" placeholder="ej: carilla, unidad">
+      </div>
+      <div class="campo">
+        <label for="p-jerarquia">Jerarquía</label>
+        <select id="p-jerarquia" style="width:100%;">
+          <option value="primario">Primario</option>
+          <option value="secundario" selected>Secundario</option>
+          <option value="terciario">Terciario</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="p-categoria">Categoría <span id="p-categoria-hint" style="font-weight:400;">(vacío = transversal, disponible para todas)</span></label>
+        <select id="p-categoria" style="width:100%;">
+          <option value="">— Transversal —</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="p-precio">Precio</label>
+        <input type="number" id="p-precio" step="0.01" min="0" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label for="p-paginas-minimas">Mínimo de páginas seleccionadas (vacío = sin mínimo)</label>
+        <input type="number" id="p-paginas-minimas" min="0" style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="p-habilitado" checked style="width:auto;">
+          Habilitado
+        </label>
+      </div>
+      <div id="modal-producto-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-producto-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL REGLA DE PRODUCCIÓN ===================== -->
+<div class="modal-fondo oculto" id="modal-regla-fondo">
+  <div class="modal">
+    <h2 id="modal-regla-titulo">Nueva regla</h2>
+    <form id="form-regla">
+      <input type="hidden" id="r-id">
+      <div class="campo">
+        <label for="r-categoria">Categoría</label>
+        <select id="r-categoria" required style="width:100%;"></select>
+      </div>
+      <div class="campo campo-doble">
+        <div>
+          <label for="r-desde">Carillas desde</label>
+          <input type="number" id="r-desde" min="0" required style="width:100%;">
+        </div>
+        <div>
+          <label for="r-hasta">Carillas hasta (vacío = sin techo)</label>
+          <input type="number" id="r-hasta" min="0" style="width:100%;">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="r-horas">Horas mínimas de anticipación (corridas)</label>
+        <input type="number" id="r-horas" min="0" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="r-activa" checked style="width:auto;"> Activa
+        </label>
+      </div>
+      <div id="modal-regla-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-regla-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/catalogo.js"></script>
+</body>
+</html>

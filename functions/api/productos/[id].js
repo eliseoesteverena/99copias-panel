@@ -2,7 +2,11 @@ import { json, errorJson, readJson } from '../lib/utils.js';
 
 const JERARQUIAS_VALIDAS = ['primario', 'secundario', 'terciario'];
 
-// PUT /api/productos/:id  body: { descripcion?, unidad_medida?, precio?, jerarquia?, habilitado? }
+// PUT /api/productos/:id
+// body: { descripcion?, unidad_medida?, precio?, jerarquia?, categoria_id?, paginas_minimas?, habilitado? }
+// `codigo` es inmutable una vez creado (ver nota en categorias/[id].js: el
+// cálculo de precio matchea por código, nunca por descripción) — si viene
+// en el body y difiere del actual, se rechaza.
 // Nota: editar precio acá NO reescribe pedidos ya creados (el total y los
 // items de trabajos existentes quedan congelados como comprobante).
 export async function onRequestPut({ params, request, env }) {
@@ -15,35 +19,50 @@ export async function onRequestPut({ params, request, env }) {
     .first();
   if (!actual) return errorJson('Producto no encontrado', 404);
 
+  if (body.codigo !== undefined && body.codigo !== actual.codigo) {
+    return errorJson('El código de un producto no se puede editar una vez creado', 400);
+  }
+
   const jerarquia = body.jerarquia ?? actual.jerarquia;
   if (!JERARQUIAS_VALIDAS.includes(jerarquia)) {
     return errorJson(`jerarquia inválida. Debe ser: ${JERARQUIAS_VALIDAS.join(', ')}`, 400);
   }
+
+  const categoriaId =
+    body.categoria_id === undefined
+      ? actual.categoria_id
+      : body.categoria_id === '' || body.categoria_id === null
+        ? null
+        : Number(body.categoria_id);
+  if (jerarquia === 'primario' && !categoriaId) {
+    return errorJson('Un producto primario necesita una categoría (no puede ser transversal)', 400);
+  }
+
+  const paginasMinimas =
+    body.paginas_minimas === undefined
+      ? actual.paginas_minimas
+      : body.paginas_minimas === '' || body.paginas_minimas === null
+        ? null
+        : Number(body.paginas_minimas);
+  if (paginasMinimas !== null && (!Number.isInteger(paginasMinimas) || paginasMinimas < 0)) {
+    return errorJson('paginas_minimas debe ser un entero mayor o igual a 0 (o vacío = sin mínimo)', 400);
+  }
+
   const habilitado =
     body.habilitado === undefined ? actual.habilitado : body.habilitado ? 1 : 0;
 
   try {
-    // Si este producto va a quedar como primario habilitado, chequeamos que
-    // no haya otro primario habilitado distinto de éste.
-    if (jerarquia === 'primario' && habilitado === 1) {
-      const otroPrimario = await env.DB.prepare(
-        `SELECT id, descripcion FROM productos
-         WHERE jerarquia = 'primario' AND habilitado = 1 AND id != ?`
-      )
-        .bind(id)
+    if (categoriaId) {
+      const categoria = await env.DB.prepare('SELECT id FROM categorias WHERE id = ?')
+        .bind(categoriaId)
         .first();
-      if (otroPrimario) {
-        return errorJson(
-          `Ya existe otro producto primario habilitado ("${otroPrimario.descripcion}"). ` +
-            `Deshabilitalo o cambiale la jerarquía antes de habilitar este.`,
-          409
-        );
-      }
+      if (!categoria) return errorJson('La categoría indicada no existe', 404);
     }
 
     await env.DB.prepare(
       `UPDATE productos
-       SET descripcion = ?, unidad_medida = ?, precio = ?, jerarquia = ?, habilitado = ?
+       SET descripcion = ?, unidad_medida = ?, precio = ?, jerarquia = ?,
+           categoria_id = ?, paginas_minimas = ?, habilitado = ?
        WHERE id = ?`
     )
       .bind(
@@ -51,6 +70,8 @@ export async function onRequestPut({ params, request, env }) {
         body.unidad_medida ?? actual.unidad_medida,
         body.precio !== undefined ? Number(body.precio) : actual.precio,
         jerarquia,
+        categoriaId,
+        paginasMinimas,
         habilitado,
         id
       )

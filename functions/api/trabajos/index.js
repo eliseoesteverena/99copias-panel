@@ -7,6 +7,7 @@ export async function onRequestGet({ request, env }) {
   const estado = url.searchParams.get('estado');
   const pagado = url.searchParams.get('pagado');
   const zonaId = url.searchParams.get('zona_id');
+  const categoriaId = url.searchParams.get('categoria_id');
   const fechaDesde = url.searchParams.get('fecha_desde');
   const fechaHasta = url.searchParams.get('fecha_hasta');
   const q = url.searchParams.get('q'); // busca por nombre/apellido/documento
@@ -25,6 +26,10 @@ export async function onRequestGet({ request, env }) {
   if (zonaId) {
     condiciones.push('t.zona_id = ?');
     params.push(zonaId);
+  }
+  if (categoriaId) {
+    condiciones.push('t.categoria_id = ?');
+    params.push(categoriaId);
   }
   if (fechaDesde) {
     condiciones.push('t.fecha_entrega >= ?');
@@ -48,15 +53,17 @@ export async function onRequestGet({ request, env }) {
     SELECT
       t.id, t.estado, t.total, t.direccion_entrega, t.fecha_entrega,
       t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
-      t.zona_id, t.turno_entrega_id, t.configuracion,
+      t.zona_id, t.turno_entrega_id, t.categoria_id, t.configuracion,
       c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
       c.documento_numero, c.email, c.celular,
       z.nombre as zona_nombre,
-      te.dia_semana, te.hora_inicio, te.hora_fin
+      te.dia_semana, te.hora_inicio, te.hora_fin,
+      cat.nombre as categoria_nombre
     FROM trabajos t
     JOIN clientes c ON c.id = t.cliente_id
     LEFT JOIN zonas z ON z.id = t.zona_id
     LEFT JOIN turnos_entrega te ON te.id = t.turno_entrega_id
+    LEFT JOIN categorias cat ON cat.id = t.categoria_id
     ${where}
     ORDER BY t.creado_en DESC
     LIMIT 300
