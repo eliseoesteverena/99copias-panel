@@ -8,18 +8,34 @@ async function apiFetch(url, opciones = {}) {
     ...opciones,
   });
 
+  // Leemos como texto primero y parseamos nosotros mismos: algunos proxies o
+  // errores intermedios pueden devolver un content-type raro para un body
+  // que sí es JSON válido (o viceversa), así que no confiamos en el header.
+  const texto = await res.text();
   let data = null;
-  const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    data = await res.json().catch(() => null);
+  if (texto) {
+    try {
+      data = JSON.parse(texto);
+    } catch {
+      // body no es JSON válido — data queda null, lo manejamos más abajo
+    }
   }
 
   if (!res.ok) {
-    const mensaje = (data && data.error) || `Error ${res.status}`;
-    const err = new Error(mensaje);
-    err.status = res.status;
-    throw err;
+    const detalle = data && data.error ? data.error : texto ? texto.slice(0, 300) : '';
+    throw new Error(detalle || `Error ${res.status}`);
   }
+
+  if (data === null) {
+    // 2xx pero el body no es JSON válido (o vino vacío). Esto no debería
+    // pasar nunca con nuestras Functions — avisamos fuerte en vez de
+    // devolver null en silencio, que rompía a cualquier caller con un
+    // críptico "Cannot read properties of null".
+    throw new Error(
+      `Respuesta inesperada del servidor (status ${res.status}, el body no es JSON válido)`
+    );
+  }
+
   return data;
 }
 

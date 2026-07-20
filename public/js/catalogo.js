@@ -47,7 +47,7 @@ async function cargarCategorias() {
   tbody.innerHTML = '<tr><td colspan="4" class="cargando">Cargando…</td></tr>';
   try {
     const data = await api.get('/api/categorias');
-    categoriasCache = data.categorias || [];
+    categoriasCache = (data && data.categorias) || [];
     renderCategorias();
     poblarSelectsDeCategoria();
   } catch (e) {
@@ -158,7 +158,7 @@ async function cargarProductos() {
   tbody.innerHTML = '<tr><td colspan="9" class="cargando">Cargando…</td></tr>';
   try {
     const data = await api.get('/api/productos');
-    productosCache = data.productos || [];
+    productosCache = (data && data.productos) || [];
     renderProductos();
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="9"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
@@ -288,7 +288,7 @@ async function cargarReglas() {
   tbody.innerHTML = '<tr><td colspan="6" class="cargando">Cargando…</td></tr>';
   try {
     const data = await api.get('/api/reglas-produccion');
-    reglasCache = data.reglas || [];
+    reglasCache = (data && data.reglas) || [];
     renderReglas();
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
