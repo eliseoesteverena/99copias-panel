@@ -2,12 +2,14 @@
 // Mantiene la misma convención de respuestas que el wizard: JSON con
 // { "error": "mensaje" } y el status HTTP correspondiente.
 
+const HEADERS_SIN_CACHE = { 'Cache-Control': 'no-store' };
+
 export function json(data, status = 200) {
-  return Response.json(data, { status });
+  return Response.json(data, { status, headers: HEADERS_SIN_CACHE });
 }
 
 export function errorJson(mensaje, status = 400) {
-  return Response.json({ error: mensaje }, { status });
+  return Response.json({ error: mensaje }, { status, headers: HEADERS_SIN_CACHE });
 }
 
 export async function readJson(request) {
