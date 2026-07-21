@@ -30,8 +30,8 @@
       <button class="chico primario" id="btn-nueva-zona">+ Nueva zona</button>
     </div>
     <table>
-      <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
-      <tbody id="tbody-zonas"><tr><td colspan="3" class="cargando">Cargando…</td></tr></tbody>
+      <thead><tr><th>Nombre</th><th class="num">Precio envío</th><th>Retiro en local</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbody-zonas"><tr><td colspan="5" class="cargando">Cargando…</td></tr></tbody>
     </table>
   </section>
 
@@ -65,6 +65,25 @@
       <tbody id="tbody-excepciones"><tr><td colspan="7" class="cargando">Cargando…</td></tr></tbody>
     </table>
   </section>
+
+  <!-- ===================== DESCUENTOS DE ENVÍO ===================== -->
+  <section class="seccion">
+    <div class="seccion-header">
+      <h2>Descuentos de envío</h2>
+      <button class="chico primario" id="btn-nuevo-descuento">+ Nuevo descuento</button>
+    </div>
+    <p style="color:var(--gris-texto);font-size:12px;margin-top:-4px;">
+      % de descuento sobre el precio de envío de la zona, según la cantidad
+      total de carillas del pedido, por categoría. El costo final queda
+      congelado en cada pedido — cambiar esto acá no afecta pedidos ya hechos.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Categoría</th><th>Carillas desde</th><th>Carillas hasta</th><th class="num">% descuento</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody id="tbody-descuentos"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
+    </table>
+  </section>
 </div>
 
 <!-- ===================== MODAL ZONA ===================== -->
@@ -76,6 +95,15 @@
       <div class="campo">
         <label for="z-nombre">Nombre</label>
         <input type="text" id="z-nombre" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="z-es-retiro" style="width:auto;"> Es retiro en local (sin costo de envío)
+        </label>
+      </div>
+      <div class="campo" id="z-precio-envio-campo">
+        <label for="z-precio-envio">Precio de envío (100%, sin descuento)</label>
+        <input type="number" id="z-precio-envio" step="0.01" min="0" style="width:100%;">
       </div>
       <div class="campo">
         <label style="display:flex;align-items:center;gap:6px;">
@@ -183,6 +211,44 @@
       <div id="modal-excepcion-error" class="mensaje error oculto"></div>
       <div class="modal-acciones">
         <button type="button" data-cerrar="modal-excepcion-fondo">Cancelar</button>
+        <button type="submit" class="primario">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL DESCUENTO DE ENVÍO ===================== -->
+<div class="modal-fondo oculto" id="modal-descuento-fondo">
+  <div class="modal">
+    <h2 id="modal-descuento-titulo">Nuevo descuento</h2>
+    <form id="form-descuento">
+      <input type="hidden" id="d-id">
+      <div class="campo">
+        <label for="d-categoria">Categoría</label>
+        <select id="d-categoria" required style="width:100%;"></select>
+      </div>
+      <div class="campo campo-doble">
+        <div>
+          <label for="d-desde">Carillas desde</label>
+          <input type="number" id="d-desde" min="0" required style="width:100%;">
+        </div>
+        <div>
+          <label for="d-hasta">Carillas hasta (vacío = sin techo)</label>
+          <input type="number" id="d-hasta" min="0" style="width:100%;">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="d-porcentaje">% de descuento sobre el precio de envío</label>
+        <input type="number" id="d-porcentaje" min="0" max="100" step="0.01" required style="width:100%;">
+      </div>
+      <div class="campo">
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="d-activa" checked style="width:auto;"> Activa
+        </label>
+      </div>
+      <div id="modal-descuento-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-descuento-fondo">Cancelar</button>
         <button type="submit" class="primario">Guardar</button>
       </div>
     </form>

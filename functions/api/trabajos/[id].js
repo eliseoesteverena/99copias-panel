@@ -12,9 +12,10 @@ export async function onRequestGet({ params, env }) {
         t.id, t.estado, t.total, t.direccion_entrega, t.fecha_entrega,
         t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
         t.configuracion, t.zona_id, t.turno_entrega_id, t.categoria_id,
+        t.con_envio, t.costo_envio,
         c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
         c.documento_numero, c.email, c.celular, c.direccion as cliente_direccion,
-        z.nombre as zona_nombre,
+        z.nombre as zona_nombre, z.es_retiro, z.precio_envio as zona_precio_envio_actual,
         te.dia_semana, te.hora_inicio, te.hora_fin,
         cat.nombre as categoria_nombre
       FROM trabajos t

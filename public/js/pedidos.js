@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearTimeout(debounceBusqueda);
     debounceBusqueda = setTimeout(cargarLista, 300);
   });
-  ['f-estado', 'f-pagado', 'f-zona', 'f-categoria', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
+  ['f-estado', 'f-pagado', 'f-zona', 'f-categoria', 'f-envio', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
     document.getElementById(id).addEventListener('change', cargarLista);
   });
   document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('f-pagado').value = '';
     document.getElementById('f-zona').value = '';
     document.getElementById('f-categoria').value = '';
+    document.getElementById('f-envio').value = '';
     document.getElementById('f-fecha-desde').value = '';
     document.getElementById('f-fecha-hasta').value = '';
     cargarLista();
@@ -88,6 +89,7 @@ function construirQuery() {
   const pagado = document.getElementById('f-pagado').value;
   const zona = document.getElementById('f-zona').value;
   const categoria = document.getElementById('f-categoria').value;
+  const envio = document.getElementById('f-envio').value;
   const desde = document.getElementById('f-fecha-desde').value;
   const hasta = document.getElementById('f-fecha-hasta').value;
 
@@ -96,6 +98,7 @@ function construirQuery() {
   if (pagado !== '') params.set('pagado', pagado);
   if (zona) params.set('zona_id', zona);
   if (categoria) params.set('categoria_id', categoria);
+  if (envio !== '') params.set('con_envio', envio);
   if (desde) params.set('fecha_desde', desde);
   if (hasta) params.set('fecha_hasta', hasta);
   return params.toString();
@@ -144,6 +147,7 @@ function renderLista(trabajos) {
             <span class="badge badge-${t.estado}">${ESTADOS_LABEL[t.estado] || t.estado}</span>
             <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
             ${t.categoria_nombre ? `<span class="badge">${escapeHtml(t.categoria_nombre)}</span>` : ''}
+            <span class="badge">${t.con_envio ? '🚚 Envío' : '🏠 Retiro'}</span>
             <span class="badge">${t.archivos_count} arch.</span>
             ${t.tiene_error_archivos ? '<span class="badge badge-error">⚠ archivo con error</span>' : ''}
           </div>
@@ -209,10 +213,20 @@ function renderDetalle(data) {
       <div class="detalle-bloque">
         <h2>Entrega</h2>
         <dl>
+          <dt>Modalidad</dt><dd>${t.con_envio ? '🚚 Envío' : '🏠 Retiro en local'}</dd>
           <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || t.cliente_direccion || '—')}</dd>
           <dt>Zona</dt><dd>${escapeHtml(t.zona_nombre || '—')}</dd>
           <dt>Turno</dt><dd>${turnoTexto}</dd>
           <dt>Fecha entrega</dt><dd>${fmtFecha(t.fecha_entrega)}</dd>
+          ${
+            t.con_envio
+              ? `<dt>Costo de envío</dt><dd>${fmtMoneda(t.costo_envio)}${
+                  t.zona_precio_envio_actual !== undefined && t.zona_precio_envio_actual !== t.costo_envio
+                    ? ` <span style="color:var(--gris-texto);font-size:11px;">(precio actual de la zona: ${fmtMoneda(t.zona_precio_envio_actual)} — este pedido quedó congelado al costo de cuando se hizo)</span>`
+                    : ''
+                }</dd>`
+              : ''
+          }
         </dl>
       </div>
       <div class="detalle-bloque">
@@ -221,6 +235,12 @@ function renderDetalle(data) {
           <dt>Categoría</dt><dd>${escapeHtml(t.categoria_nombre || '—')}</dd>
           <dt>Creado</dt><dd>${fmtFechaHora(t.creado_en)}</dd>
           <dt>Actualizado</dt><dd>${fmtFechaHora(t.actualizado_en)}</dd>
+          ${
+            t.con_envio && t.costo_envio > 0
+              ? `<dt>Subtotal impresión</dt><dd>${fmtMoneda(t.total - t.costo_envio)}</dd>
+                 <dt>Envío</dt><dd>${fmtMoneda(t.costo_envio)}</dd>`
+              : ''
+          }
           <dt>Total</dt><dd>${fmtMoneda(t.total)}</dd>
           <dt>Observaciones</dt><dd>${escapeHtml(t.observaciones || '—')}</dd>
         </dl>
@@ -323,8 +343,15 @@ function archivoCardHtml(trabajoId, archivo, item) {
     ['Copias', archivo.copias ?? '—'],
     ['Faz', FAZ_LABEL[archivo.faz] || archivo.faz || '—'],
     ['Rango', archivo.rango && String(archivo.rango).trim() ? archivo.rango : 'Completo'],
+    ['Páginas/carilla', archivo.paginas_por_carilla || 1],
     ['Acabado', archivo.acabado || '—'],
   ];
+  // hojas_fisicas = lo que efectivamente se imprime por copia (ya calculado
+  // por el wizard: ceil(páginas del rango / paginas_por_carilla)) — es lo
+  // que se compara contra productos.paginas_minimas, no "Páginas".
+  if (item && item.hojas_fisicas !== undefined && item.hojas_fisicas !== null) {
+    configFilas.push(['Hojas físicas', item.hojas_fisicas]);
+  }
 
   let bloquePrecio = '';
   if (item) {

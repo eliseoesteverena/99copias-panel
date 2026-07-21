@@ -1,6 +1,6 @@
 import { json, errorJson } from '../lib/utils.js';
 
-// GET /api/trabajos?estado=&pagado=&zona_id=&fecha_desde=&fecha_hasta=&q=
+// GET /api/trabajos?estado=&pagado=&zona_id=&categoria_id=&con_envio=&fecha_desde=&fecha_hasta=&q=
 // Lista pedidos para el panel (vista tipo bandeja de email).
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -8,6 +8,7 @@ export async function onRequestGet({ request, env }) {
   const pagado = url.searchParams.get('pagado');
   const zonaId = url.searchParams.get('zona_id');
   const categoriaId = url.searchParams.get('categoria_id');
+  const conEnvio = url.searchParams.get('con_envio');
   const fechaDesde = url.searchParams.get('fecha_desde');
   const fechaHasta = url.searchParams.get('fecha_hasta');
   const q = url.searchParams.get('q'); // busca por nombre/apellido/documento
@@ -31,6 +32,10 @@ export async function onRequestGet({ request, env }) {
     condiciones.push('t.categoria_id = ?');
     params.push(categoriaId);
   }
+  if (conEnvio === '0' || conEnvio === '1') {
+    condiciones.push('t.con_envio = ?');
+    params.push(Number(conEnvio));
+  }
   if (fechaDesde) {
     condiciones.push('t.fecha_entrega >= ?');
     params.push(fechaDesde);
@@ -53,10 +58,11 @@ export async function onRequestGet({ request, env }) {
     SELECT
       t.id, t.estado, t.total, t.direccion_entrega, t.fecha_entrega,
       t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
-      t.zona_id, t.turno_entrega_id, t.categoria_id, t.configuracion,
+      t.zona_id, t.turno_entrega_id, t.categoria_id, t.con_envio, t.costo_envio,
+      t.configuracion,
       c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
       c.documento_numero, c.email, c.celular,
-      z.nombre as zona_nombre,
+      z.nombre as zona_nombre, z.es_retiro,
       te.dia_semana, te.hora_inicio, te.hora_fin,
       cat.nombre as categoria_nombre
     FROM trabajos t

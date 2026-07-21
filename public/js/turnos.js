@@ -1,13 +1,17 @@
 let zonasCache = [];
 let turnosCache = [];
 let excepcionesCache = [];
+let categoriasCache = [];
+let descuentosCache = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+  cargarCategorias();
   cargarTodo();
 
   // --- zonas ---
   document.getElementById('btn-nueva-zona').addEventListener('click', () => abrirModalZona(null));
   document.getElementById('form-zona').addEventListener('submit', guardarZona);
+  document.getElementById('z-es-retiro').addEventListener('change', actualizarCampoPrecioEnvio);
 
   // --- turnos ---
   document.getElementById('btn-nuevo-turno').addEventListener('click', () => abrirModalTurno(null));
@@ -18,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-nueva-excepcion').addEventListener('click', abrirModalExcepcion);
   document.getElementById('form-excepcion').addEventListener('submit', guardarExcepcion);
   document.getElementById('e-tipo').addEventListener('change', actualizarCamposExcepcion);
+
+  // --- descuentos de envío ---
+  document.getElementById('btn-nuevo-descuento').addEventListener('click', () => abrirModalDescuento(null));
+  document.getElementById('form-descuento').addEventListener('submit', guardarDescuento);
 
   // cierre genérico de modales
   document.querySelectorAll('[data-cerrar]').forEach((btn) => {
@@ -30,13 +38,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+async function cargarCategorias() {
+  try {
+    const data = await api.get('/api/categorias');
+    categoriasCache = (data && data.categorias) || [];
+    const opciones = categoriasCache.map((c) => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('');
+    document.getElementById('d-categoria').innerHTML = opciones;
+  } catch (e) {
+    // el modal de descuentos simplemente no va a poder abrirse bien; se
+    // avisa recién ahí si el usuario intenta crear uno
+  }
+}
+
 function cerrarModal(id) {
   document.getElementById(id).classList.add('oculto');
 }
 
 async function cargarTodo() {
   await cargarZonas();
-  await Promise.all([cargarTurnos(), cargarExcepciones()]);
+  await Promise.all([cargarTurnos(), cargarExcepciones(), cargarDescuentos()]);
 }
 
 // =========================================================
@@ -44,21 +64,21 @@ async function cargarTodo() {
 // =========================================================
 async function cargarZonas() {
   const tbody = document.getElementById('tbody-zonas');
-  tbody.innerHTML = '<tr><td colspan="3" class="cargando">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="cargando">Cargando…</td></tr>';
   try {
     const data = await api.get('/api/zonas');
     zonasCache = data.zonas || [];
     renderZonas();
     poblarSelectsDeZona();
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="3"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
   }
 }
 
 function renderZonas() {
   const tbody = document.getElementById('tbody-zonas');
   if (zonasCache.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" class="vacio">No hay zonas cargadas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="vacio">No hay zonas cargadas.</td></tr>';
     return;
   }
   tbody.innerHTML = zonasCache
@@ -66,6 +86,8 @@ function renderZonas() {
       (z) => `
     <tr>
       <td>${escapeHtml(z.nombre)}</td>
+      <td class="num">${z.es_retiro ? '—' : fmtMoneda(z.precio_envio)}</td>
+      <td>${z.es_retiro ? '<span class="badge">Sí</span>' : ''}</td>
       <td><span class="badge ${z.activa ? 'badge-pagado' : 'badge-no-pagado'}">${z.activa ? 'Activa' : 'Inactiva'}</span></td>
       <td class="acciones-col">
         <button class="chico" data-editar-zona="${z.id}">Editar</button>
@@ -100,8 +122,18 @@ function abrirModalZona(id) {
   document.getElementById('modal-zona-error').className = 'mensaje error oculto';
   document.getElementById('z-id').value = zona ? zona.id : '';
   document.getElementById('z-nombre').value = zona ? zona.nombre : '';
+  document.getElementById('z-es-retiro').checked = zona ? !!zona.es_retiro : false;
+  document.getElementById('z-precio-envio').value = zona ? zona.precio_envio : 0;
   document.getElementById('z-activa').checked = zona ? !!zona.activa : true;
+  actualizarCampoPrecioEnvio();
   document.getElementById('modal-zona-fondo').classList.remove('oculto');
+}
+
+function actualizarCampoPrecioEnvio() {
+  const esRetiro = document.getElementById('z-es-retiro').checked;
+  const campo = document.getElementById('z-precio-envio-campo');
+  campo.classList.toggle('oculto', esRetiro);
+  if (esRetiro) document.getElementById('z-precio-envio').value = 0;
 }
 
 async function guardarZona(e) {
@@ -109,6 +141,8 @@ async function guardarZona(e) {
   const id = document.getElementById('z-id').value;
   const body = {
     nombre: document.getElementById('z-nombre').value.trim(),
+    es_retiro: document.getElementById('z-es-retiro').checked,
+    precio_envio: Number(document.getElementById('z-precio-envio').value) || 0,
     activa: document.getElementById('z-activa').checked,
   };
   const errorBox = document.getElementById('modal-zona-error');
@@ -353,6 +387,103 @@ async function borrarExcepcion(id) {
   try {
     await api.del(`/api/turnos-excepciones/${id}`);
     await cargarExcepciones();
+  } catch (e) {
+    alert(`No se pudo borrar: ${e.message}`);
+  }
+}
+
+// =========================================================
+// DESCUENTOS DE ENVÍO
+// =========================================================
+async function cargarDescuentos() {
+  const tbody = document.getElementById('tbody-descuentos');
+  tbody.innerHTML = '<tr><td colspan="6" class="cargando">Cargando…</td></tr>';
+  try {
+    const data = await api.get('/api/descuentos-envio');
+    descuentosCache = (data && data.descuentos) || [];
+    renderDescuentos();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
+  }
+}
+
+function renderDescuentos() {
+  const tbody = document.getElementById('tbody-descuentos');
+  if (descuentosCache.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="vacio">No hay descuentos de envío cargados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = descuentosCache
+    .map(
+      (d) => `
+    <tr>
+      <td>${escapeHtml(d.categoria_nombre)}</td>
+      <td class="num">${d.carillas_desde}</td>
+      <td class="num">${d.carillas_hasta ?? 'Sin techo'}</td>
+      <td class="num">${d.porcentaje_descuento}%</td>
+      <td><span class="badge ${d.activa ? 'badge-pagado' : 'badge-no-pagado'}">${d.activa ? 'Activo' : 'Inactivo'}</span></td>
+      <td class="acciones-col">
+        <button class="chico" data-editar-descuento="${d.id}">Editar</button>
+        <button class="chico peligro" data-borrar-descuento="${d.id}">Borrar</button>
+      </td>
+    </tr>`
+    )
+    .join('');
+
+  tbody.querySelectorAll('[data-editar-descuento]').forEach((btn) =>
+    btn.addEventListener('click', () => abrirModalDescuento(Number(btn.dataset.editarDescuento)))
+  );
+  tbody.querySelectorAll('[data-borrar-descuento]').forEach((btn) =>
+    btn.addEventListener('click', () => borrarDescuento(Number(btn.dataset.borrarDescuento)))
+  );
+}
+
+function abrirModalDescuento(id) {
+  if (categoriasCache.length === 0) {
+    alert('Primero tenés que crear al menos una categoría (sección Catálogo).');
+    return;
+  }
+  const descuento = id ? descuentosCache.find((d) => d.id === id) : null;
+  document.getElementById('modal-descuento-titulo').textContent = descuento ? 'Editar descuento' : 'Nuevo descuento';
+  document.getElementById('modal-descuento-error').className = 'mensaje error oculto';
+  document.getElementById('d-id').value = descuento ? descuento.id : '';
+  document.getElementById('d-categoria').value = descuento ? descuento.categoria_id : categoriasCache[0].id;
+  document.getElementById('d-desde').value = descuento ? descuento.carillas_desde : '0';
+  document.getElementById('d-hasta').value = descuento && descuento.carillas_hasta !== null ? descuento.carillas_hasta : '';
+  document.getElementById('d-porcentaje').value = descuento ? descuento.porcentaje_descuento : '0';
+  document.getElementById('d-activa').checked = descuento ? !!descuento.activa : true;
+  document.getElementById('modal-descuento-fondo').classList.remove('oculto');
+}
+
+async function guardarDescuento(e) {
+  e.preventDefault();
+  const id = document.getElementById('d-id').value;
+  const hastaRaw = document.getElementById('d-hasta').value;
+  const body = {
+    categoria_id: Number(document.getElementById('d-categoria').value),
+    carillas_desde: Number(document.getElementById('d-desde').value),
+    carillas_hasta: hastaRaw === '' ? '' : Number(hastaRaw),
+    porcentaje_descuento: Number(document.getElementById('d-porcentaje').value),
+    activa: document.getElementById('d-activa').checked,
+  };
+  const errorBox = document.getElementById('modal-descuento-error');
+  errorBox.className = 'mensaje error oculto';
+  try {
+    if (id) await api.put(`/api/descuentos-envio/${id}`, body);
+    else await api.post('/api/descuentos-envio', body);
+    cerrarModal('modal-descuento-fondo');
+    await cargarDescuentos();
+  } catch (e2) {
+    errorBox.textContent = e2.message;
+    errorBox.className = 'mensaje error';
+  }
+}
+
+async function borrarDescuento(id) {
+  if (!confirm('¿Borrar este descuento de envío?')) return;
+  try {
+    await api.del(`/api/descuentos-envio/${id}`);
+    await cargarDescuentos();
   } catch (e) {
     alert(`No se pudo borrar: ${e.message}`);
   }
