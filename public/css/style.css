@@ -1,32 +1,75 @@
-/* Panel de administración — 99copias
-   Estética "plano de arquitectura": blanco, negro, azul Francia como acento
-   puntual. Sin bordes redondeados, líneas finas, tipografía monoespaciada
-   para datos. CSS mínimo indispensable. */
+/* ==========================================================================
+   Panel de administración — 99copias
+   Sistema de diseño: estación de trabajo. Neutros cálidos + un acento
+   "tinta". Roboto para UI, Roboto Mono para datos tabulares (precios,
+   códigos) — ayuda a escanear números sin salir de la restricción de fuente.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap');
 
 :root {
-  --negro: #111111;
-  --gris-borde: #d8d8d8;
-  --gris-suave: #f4f4f4;
-  --gris-texto: #666666;
-  --azul: #0055a4;
-  --rojo: #b3261e;
-  --verde: #1e7a3f;
-  --amarillo: #a06600;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  /* Color: neutros cálidos (papel, no blanco puro) */
+  --paper: #faf9f7;
+  --surface: #ffffff;
+  --ink-900: #1c1e22;
+  --ink-700: #46494f;
+  --ink-500: #7a7d84;
+  --ink-300: #b4b6ba;
+  --line: #e7e4de;
+  --line-strong: #d3cfc6;
+
+  /* Acento único: azul tinta */
+  --accent: #2453d9;
+  --accent-ink: #17369e;
+  --accent-soft: #eaf0fe;
+
+  /* Estados semánticos */
+  --ok: #157a4f;
+  --ok-soft: #e7f6ef;
+  --warn: #a3650a;
+  --warn-soft: #fbf1e2;
+  --danger: #c33327;
+  --danger-soft: #fbeae8;
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+
+  /* Tipografía */
+  --font-ui: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: 'Roboto Mono', 'SFMono-Regular', Consolas, Menlo, monospace;
+
+  /* Escala de espaciado (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+
+  --shadow-sm: 0 1px 2px rgba(28, 30, 34, 0.06), 0 1px 1px rgba(28, 30, 34, 0.04);
+  --shadow-md: 0 8px 24px rgba(28, 30, 34, 0.12), 0 2px 6px rgba(28, 30, 34, 0.06);
+
+  /* Alto de la barra superior/inferior de navegación */
+  --shell-bar: 56px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #ffffff;
-  color: var(--negro);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.45;
+  background: var(--paper);
+  color: var(--ink-900);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 button, input, select, textarea {
@@ -35,213 +78,483 @@ button, input, select, textarea {
   color: inherit;
 }
 
-a { color: var(--azul); }
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
 
-/* ---------- Header de navegación, común a las 3 páginas ---------- */
+h1, h2, h3 { font-weight: 700; margin: 0; color: var(--ink-900); }
+
+::selection { background: var(--accent-soft); color: var(--accent-ink); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-300); }
+
+/* Foco de teclado visible en todo (accesibilidad) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   App shell: barra superior en notebook, barra inferior fija en mobile
+   ========================================================================== */
 
 .top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--negro);
+  gap: var(--sp-6);
+  height: var(--shell-bar);
+  padding: 0 var(--sp-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 
 .top-nav .marca {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 15px;
+  color: var(--ink-900);
+  white-space: nowrap;
+}
+
+.top-nav .marca .punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
 }
 
 .top-nav nav {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
+  height: 100%;
 }
 
 .top-nav nav a {
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 100%;
+  padding: 0 var(--sp-3);
   text-decoration: none;
-  color: var(--negro);
-  border: 1px solid transparent;
+  color: var(--ink-500);
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
+
+.top-nav nav a svg { width: 18px; height: 18px; flex: none; }
+
+.top-nav nav a:hover { color: var(--ink-900); }
 
 .top-nav nav a.activo {
-  border: 1px solid var(--negro);
-  font-weight: 600;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
-.top-nav nav a:hover { border-color: var(--gris-borde); }
+/* En mobile, la nav se reubica como barra inferior fija (ver media query
+   al final del archivo). El wordmark queda solo como cabecera superior. */
 
-/* ---------- Layout general ---------- */
+/* ==========================================================================
+   Layout de página estándar (para catalogo.html y turnos.html)
+   ========================================================================== */
 
 .pagina {
-  padding: 20px;
-  max-width: 1400px;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.pagina h1 {
-  font-size: 18px;
-  margin: 0 0 16px 0;
+.pagina > h1 {
+  font-size: 22px;
+  margin-bottom: var(--sp-1);
 }
 
-.pagina h2 {
-  font-size: 15px;
-  margin: 0 0 10px 0;
+.pagina-intro {
+  color: var(--ink-500);
+  font-size: 13px;
+  max-width: 760px;
+  margin: 0 0 var(--sp-6) 0;
 }
 
-/* ---------- Botones y controles ---------- */
+.seccion {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+
+.seccion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.seccion-header h2 {
+  font-size: 16px;
+}
+
+.seccion-header-acciones {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.label-hint {
+  font-weight: 400;
+  color: var(--ink-500);
+}
+
+.nota-inline {
+  color: var(--ink-500);
+  font-size: 11.5px;
+}
+
+.seccion-nota {
+  color: var(--ink-500);
+  font-size: 12.5px;
+  margin: calc(-1 * var(--sp-2)) 0 var(--sp-4) 0;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Botones
+   ========================================================================== */
 
 button {
-  background: #fff;
-  border: 1px solid var(--negro);
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-900);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-button:hover { background: var(--gris-suave); }
+button:hover { background: var(--paper); border-color: var(--ink-300); }
+button:active { background: var(--line); }
 
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: default;
+  background: var(--surface);
 }
 
 button.primario {
-  background: var(--negro);
+  background: var(--accent);
   color: #fff;
-  border-color: var(--negro);
+  border-color: var(--accent);
 }
-
-button.primario:hover { background: #333; }
+button.primario:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
 
 button.acento {
-  border-color: var(--azul);
-  color: var(--azul);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
 }
+button.acento:hover { background: var(--accent-soft); }
 
 button.peligro {
-  border-color: var(--rojo);
-  color: var(--rojo);
+  border-color: var(--line-strong);
+  color: var(--danger);
 }
+button.peligro:hover { background: var(--danger-soft); border-color: var(--danger); }
 
-button.chico {
-  padding: 3px 8px;
-  font-size: 12px;
+button.fantasma {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-500);
 }
+button.fantasma:hover { background: var(--paper); color: var(--ink-900); }
+
+button.chico { padding: 6px 11px; font-size: 13px; }
+
+button svg { width: 16px; height: 16px; flex: none; }
+
+/* ==========================================================================
+   Formularios
+   ========================================================================== */
 
 input[type="text"], input[type="number"], input[type="date"],
 input[type="time"], input[type="email"], select, textarea {
-  border: 1px solid var(--gris-borde);
-  padding: 6px 8px;
-  background: #fff;
+  height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-3);
+  background: var(--surface);
+  color: var(--ink-900);
+  width: 100%;
 }
 
-input:focus, select:focus, textarea:focus, button:focus {
-  outline: 2px solid var(--azul);
-  outline-offset: 1px;
+textarea { height: auto; padding: var(--sp-3); min-height: 80px; }
+
+input::placeholder { color: var(--ink-300); }
+
+input:hover, select:hover { border-color: var(--ink-300); }
+
+input:disabled, select:disabled {
+  background: var(--paper);
+  color: var(--ink-500);
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%237a7d84' d='M4 6l4 4 4-4' stroke='%237a7d84' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
 }
 
 label {
   display: block;
-  font-size: 12px;
-  color: var(--gris-texto);
-  margin-bottom: 3px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-700);
+  margin-bottom: var(--sp-1);
 }
 
-.campo { margin-bottom: 10px; }
+.campo { margin-bottom: var(--sp-4); }
 
-/* ---------- Tablas ---------- */
+.campo-doble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+.campo-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.campo-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.campo-ayuda {
+  color: var(--ink-500);
+  font-size: 12px;
+  margin: var(--sp-1) 0 0 0;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Tablas
+   ========================================================================== */
+
+.tabla-wrap {
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--sp-1));
+}
 
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 14px;
 }
 
 th, td {
   text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--gris-borde);
+  padding: var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
-}
-
-th {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--gris-texto);
-  border-bottom: 1px solid var(--negro);
-}
-
-tbody tr:hover { background: var(--gris-suave); }
-
-/* ---------- Badges de estado ---------- */
-
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 11px;
-  border: 1px solid currentColor;
   white-space: nowrap;
 }
 
-.badge-pendiente { color: var(--amarillo); }
-.badge-en_proceso { color: var(--azul); }
-.badge-listo { color: var(--verde); }
-.badge-entregado { color: var(--gris-texto); }
-.badge-pagado { color: var(--verde); }
-.badge-no-pagado { color: var(--rojo); }
-.badge-error { color: var(--rojo); background: #fdeceb; }
+th:first-child, td:first-child { padding-left: var(--sp-1); }
 
-/* ---------- Mensajes / estado de carga ---------- */
+th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+tbody tr:hover { background: var(--paper); }
+
+td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+td.acciones-col { text-align: right; }
+
+.mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* ==========================================================================
+   Badges de estado — barra de color a la izquierda, no caja completa
+   ========================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: var(--paper);
+  color: var(--ink-700);
+}
+
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.badge-pendiente { color: var(--warn); background: var(--warn-soft); }
+.badge-en_proceso { color: var(--info); background: var(--info-soft); }
+.badge-listo { color: var(--ok); background: var(--ok-soft); }
+.badge-entregado { color: var(--ink-500); background: var(--paper); }
+.badge-pagado { color: var(--ok); background: var(--ok-soft); }
+.badge-no-pagado { color: var(--danger); background: var(--danger-soft); }
+.badge-error { color: var(--danger); background: var(--danger-soft); font-weight: 700; }
+
+/* ==========================================================================
+   Mensajes de estado / vacío / carga
+   ========================================================================== */
 
 .mensaje {
-  padding: 8px 12px;
-  border: 1px solid var(--gris-borde);
-  margin-bottom: 12px;
-  font-size: 13px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--sp-4);
+  font-size: 13.5px;
+  border: 1px solid var(--line);
+  background: var(--paper);
 }
 
-.mensaje.error { border-color: var(--rojo); color: var(--rojo); }
-.mensaje.ok { border-color: var(--verde); color: var(--verde); }
+.mensaje.error { border-color: #f0c6c0; color: var(--danger); background: var(--danger-soft); }
+.mensaje.ok { border-color: #b9e0ca; color: var(--ok); background: var(--ok-soft); }
 
 .vacio {
-  padding: 30px;
+  padding: var(--sp-8) var(--sp-4);
   text-align: center;
-  color: var(--gris-texto);
+  color: var(--ink-500);
+  font-size: 14px;
 }
 
-.cargando { color: var(--gris-texto); font-style: italic; }
+.cargando { color: var(--ink-500); font-size: 14px; }
 
-/* ---------- Modal simple ---------- */
+/* ==========================================================================
+   Modal
+   ========================================================================== */
 
 .modal-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(28, 30, 34, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
+  padding: var(--sp-4);
 }
 
 .modal {
-  background: #fff;
-  border: 1px solid var(--negro);
-  padding: 20px;
-  width: 420px;
-  max-width: 92vw;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--sp-6);
+  width: 440px;
+  max-width: 100%;
   max-height: 88vh;
   overflow-y: auto;
 }
 
-.modal h2 { margin-top: 0; }
+.modal h2 { font-size: 17px; margin-bottom: var(--sp-4); }
 
 .modal-acciones {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
 }
 
 .oculto { display: none !important; }
 
-code, .mono { font-family: var(--font-mono); }
+/* ==========================================================================
+   Responsive: notebook es la base; ajustes puntuales para mobile.
+   Mobile: menos padding lateral, nav pasa a barra inferior fija.
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  html, body { font-size: 15px; }
+
+  .pagina { padding: var(--sp-4) var(--sp-3) calc(var(--shell-bar) + var(--sp-6)); }
+  .seccion { padding: var(--sp-4) var(--sp-3); border-radius: var(--radius-sm); }
+
+  .campo-doble { grid-template-columns: 1fr; gap: var(--sp-3); }
+
+  .modal { padding: var(--sp-4); border-radius: var(--radius-sm); }
+
+  /* La barra sube a top solo con el wordmark; la navegación migra abajo */
+  .top-nav {
+    padding: 0 var(--sp-4);
+    gap: var(--sp-3);
+  }
+  .top-nav nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    height: var(--shell-bar);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    border-bottom: none;
+    justify-content: space-around;
+    padding: 0 var(--sp-2);
+    z-index: 40;
+  }
+  .top-nav nav a {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    border-bottom: none;
+    flex: 1;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+  }
+  .top-nav nav a.activo {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  table { font-size: 13.5px; }
+  th, td { padding: var(--sp-2); }
+}
