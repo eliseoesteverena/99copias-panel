@@ -10,11 +10,20 @@
 <body>
 
 <header class="top-nav">
-  <div class="marca">99copias · admin</div>
+  <div class="marca"><span class="punto"></span>99copias · admin</div>
   <nav>
-    <a href="/index.html" class="activo">Pedidos</a>
-    <a href="/catalogo.html">Catálogo</a>
-    <a href="/turnos.html">Turnos de entrega</a>
+    <a href="/index.html" class="activo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 12h5l1.5 2.5h5L16 12h5"/><path d="M8 7 9.5 3.5h5L16 7"/></svg>
+      Pedidos
+    </a>
+    <a href="/catalogo.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      Catálogo
+    </a>
+    <a href="/turnos.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+      Turnos
+    </a>
   </nav>
 </header>
 
@@ -23,35 +32,51 @@
   <!-- ---------- Columna izquierda: filtros + lista ---------- -->
   <aside class="pedidos-lista-col">
     <div class="filtros">
-      <input type="text" id="f-buscar" placeholder="Buscar cliente o DNI…">
-      <select id="f-estado">
-        <option value="">Todos los estados</option>
-        <option value="pendiente">Pendiente</option>
-        <option value="en_proceso">En proceso</option>
-        <option value="listo">Listo</option>
-        <option value="entregado">Entregado</option>
-      </select>
-      <select id="f-pagado">
-        <option value="">Pagado / No pagado</option>
-        <option value="1">Pagado</option>
-        <option value="0">No pagado</option>
-      </select>
-      <select id="f-zona">
-        <option value="">Todas las zonas</option>
-      </select>
-      <select id="f-categoria">
-        <option value="">Todas las categorías</option>
-      </select>
-      <select id="f-envio">
-        <option value="">Envío / Retiro</option>
-        <option value="1">Con envío</option>
-        <option value="0">Retiro / sin envío</option>
-      </select>
-      <div class="filtros-fechas">
-        <input type="date" id="f-fecha-desde" title="Entrega desde">
-        <input type="date" id="f-fecha-hasta" title="Entrega hasta">
+      <div class="filtros-barra">
+        <div class="buscador">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="f-buscar" placeholder="Buscar por cliente o DNI…">
+        </div>
+        <button class="chico" id="btn-toggle-filtros" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+          Filtros
+          <span class="chip-contador oculto" id="filtros-contador">0</span>
+        </button>
       </div>
-      <button id="btn-limpiar-filtros" class="chico">Limpiar filtros</button>
+
+      <div class="chips-activos oculto" id="chips-activos"></div>
+
+      <div class="filtros-panel oculto" id="filtros-panel">
+        <select id="f-estado">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="listo">Listo</option>
+          <option value="entregado">Entregado</option>
+        </select>
+        <select id="f-pagado">
+          <option value="">Pagado / No pagado</option>
+          <option value="1">Pagado</option>
+          <option value="0">No pagado</option>
+        </select>
+        <select id="f-envio">
+          <option value="">Envío / Retiro</option>
+          <option value="1">Con envío</option>
+          <option value="0">Retiro / sin envío</option>
+        </select>
+        <select id="f-zona">
+          <option value="">Todas las zonas</option>
+        </select>
+        <select id="f-categoria">
+          <option value="">Todas las categorías</option>
+        </select>
+        <div class="filtros-fechas">
+          <input type="date" id="f-fecha-desde" title="Entrega desde">
+          <span class="filtros-fechas-guion">–</span>
+          <input type="date" id="f-fecha-hasta" title="Entrega hasta">
+        </div>
+        <button id="btn-limpiar-filtros" class="chico fantasma">Limpiar todo</button>
+      </div>
     </div>
 
     <div id="lista-estado" class="mensaje oculto"></div>

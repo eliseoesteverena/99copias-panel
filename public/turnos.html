@@ -5,16 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turnos de entrega — Panel 99copias</title>
 <link rel="stylesheet" href="/css/style.css">
-<link rel="stylesheet" href="/css/turnos.css">
 </head>
 <body>
 
 <header class="top-nav">
-  <div class="marca">99copias · admin</div>
+  <div class="marca"><span class="punto"></span>99copias · admin</div>
   <nav>
-    <a href="/index.html">Pedidos</a>
-    <a href="/catalogo.html">Catálogo</a>
-    <a href="/turnos.html" class="activo">Turnos de entrega</a>
+    <a href="/index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 12h5l1.5 2.5h5L16 12h5"/><path d="M8 7 9.5 3.5h5L16 7"/></svg>
+      Pedidos
+    </a>
+    <a href="/catalogo.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      Catálogo
+    </a>
+    <a href="/turnos.html" class="activo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+      Turnos
+    </a>
   </nav>
 </header>
 
@@ -29,27 +37,31 @@
       <h2>Zonas</h2>
       <button class="chico primario" id="btn-nueva-zona">+ Nueva zona</button>
     </div>
-    <table>
+    <div class="tabla-wrap">
+      <table>
       <thead><tr><th>Nombre</th><th class="num">Precio envío</th><th>Retiro en local</th><th>Estado</th><th></th></tr></thead>
       <tbody id="tbody-zonas"><tr><td colspan="5" class="cargando">Cargando…</td></tr></tbody>
     </table>
+    </div>
   </section>
 
   <!-- ===================== TURNOS RECURRENTES ===================== -->
   <section class="seccion">
     <div class="seccion-header">
       <h2>Turnos recurrentes</h2>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div class="seccion-header-acciones">
         <select id="filtro-zona-turnos"><option value="">Todas las zonas</option></select>
         <button class="chico primario" id="btn-nuevo-turno">+ Nuevo turno</button>
       </div>
     </div>
-    <table>
+    <div class="tabla-wrap">
+      <table>
       <thead>
         <tr><th>Zona</th><th>Día</th><th>Horario</th><th>Capacidad</th><th>Estado</th><th></th></tr>
       </thead>
       <tbody id="tbody-turnos"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
     </table>
+    </div>
   </section>
 
   <!-- ===================== EXCEPCIONES ===================== -->
@@ -58,12 +70,14 @@
       <h2>Excepciones puntuales</h2>
       <button class="chico primario" id="btn-nueva-excepcion">+ Nueva excepción</button>
     </div>
-    <table>
+    <div class="tabla-wrap">
+      <table>
       <thead>
         <tr><th>Zona</th><th>Turno</th><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Motivo</th><th></th></tr>
       </thead>
       <tbody id="tbody-excepciones"><tr><td colspan="7" class="cargando">Cargando…</td></tr></tbody>
     </table>
+    </div>
   </section>
 
   <!-- ===================== DESCUENTOS DE ENVÍO ===================== -->
@@ -72,17 +86,19 @@
       <h2>Descuentos de envío</h2>
       <button class="chico primario" id="btn-nuevo-descuento">+ Nuevo descuento</button>
     </div>
-    <p style="color:var(--gris-texto);font-size:12px;margin-top:-4px;">
+    <p class="seccion-nota">
       % de descuento sobre el precio de envío de la zona, según la cantidad
       total de carillas del pedido, por categoría. El costo final queda
       congelado en cada pedido — cambiar esto acá no afecta pedidos ya hechos.
     </p>
-    <table>
+    <div class="tabla-wrap">
+      <table>
       <thead>
         <tr><th>Categoría</th><th>Carillas desde</th><th>Carillas hasta</th><th class="num">% descuento</th><th>Estado</th><th></th></tr>
       </thead>
       <tbody id="tbody-descuentos"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
     </table>
+    </div>
   </section>
 </div>
 
@@ -94,20 +110,20 @@
       <input type="hidden" id="z-id">
       <div class="campo">
         <label for="z-nombre">Nombre</label>
-        <input type="text" id="z-nombre" required style="width:100%;">
+        <input type="text" id="z-nombre" required>
       </div>
       <div class="campo">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="z-es-retiro" style="width:auto;"> Es retiro en local (sin costo de envío)
+        <label class="campo-check">
+          <input type="checkbox" id="z-es-retiro"> Es retiro en local (sin costo de envío)
         </label>
       </div>
       <div class="campo" id="z-precio-envio-campo">
         <label for="z-precio-envio">Precio de envío (100%, sin descuento)</label>
-        <input type="number" id="z-precio-envio" step="0.01" min="0" style="width:100%;">
+        <input type="number" id="z-precio-envio" step="0.01" min="0">
       </div>
       <div class="campo">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="z-activa" checked style="width:auto;"> Activa
+        <label class="campo-check">
+          <input type="checkbox" id="z-activa" checked> Activa
         </label>
       </div>
       <div id="modal-zona-error" class="mensaje error oculto"></div>
@@ -127,11 +143,11 @@
       <input type="hidden" id="t-id">
       <div class="campo">
         <label for="t-zona">Zona</label>
-        <select id="t-zona" required style="width:100%;"></select>
+        <select id="t-zona" required></select>
       </div>
       <div class="campo">
         <label for="t-dia">Día de la semana</label>
-        <select id="t-dia" required style="width:100%;">
+        <select id="t-dia" required>
           <option value="0">Domingo</option>
           <option value="1">Lunes</option>
           <option value="2">Martes</option>
@@ -144,20 +160,20 @@
       <div class="campo campo-doble">
         <div>
           <label for="t-hora-inicio">Hora inicio</label>
-          <input type="time" id="t-hora-inicio" required style="width:100%;">
+          <input type="time" id="t-hora-inicio" required>
         </div>
         <div>
           <label for="t-hora-fin">Hora fin</label>
-          <input type="time" id="t-hora-fin" required style="width:100%;">
+          <input type="time" id="t-hora-fin" required>
         </div>
       </div>
       <div class="campo">
         <label for="t-capacidad">Capacidad máxima (pedidos) — vacío = sin límite</label>
-        <input type="number" id="t-capacidad" min="0" style="width:100%;">
+        <input type="number" id="t-capacidad" min="0">
       </div>
       <div class="campo">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="t-activo" checked style="width:auto;"> Activo
+        <label class="campo-check">
+          <input type="checkbox" id="t-activo" checked> Activo
         </label>
       </div>
       <div id="modal-turno-error" class="mensaje error oculto"></div>
@@ -176,15 +192,15 @@
     <form id="form-excepcion">
       <div class="campo">
         <label for="e-turno">Turno</label>
-        <select id="e-turno" required style="width:100%;"></select>
+        <select id="e-turno" required></select>
       </div>
       <div class="campo">
         <label for="e-fecha">Fecha</label>
-        <input type="date" id="e-fecha" required style="width:100%;">
+        <input type="date" id="e-fecha" required>
       </div>
       <div class="campo">
         <label for="e-tipo">Tipo</label>
-        <select id="e-tipo" style="width:100%;">
+        <select id="e-tipo">
           <option value="cancelado">Cancelado</option>
           <option value="capacidad_modificada">Capacidad modificada</option>
           <option value="horario_modificado">Horario modificado</option>
@@ -192,21 +208,21 @@
       </div>
       <div class="campo oculto" id="e-campo-capacidad">
         <label for="e-capacidad">Capacidad máxima ese día</label>
-        <input type="number" id="e-capacidad" min="0" style="width:100%;">
+        <input type="number" id="e-capacidad" min="0">
       </div>
       <div class="campo campo-doble oculto" id="e-campo-horario">
         <div>
           <label for="e-hora-inicio">Hora inicio</label>
-          <input type="time" id="e-hora-inicio" style="width:100%;">
+          <input type="time" id="e-hora-inicio">
         </div>
         <div>
           <label for="e-hora-fin">Hora fin</label>
-          <input type="time" id="e-hora-fin" style="width:100%;">
+          <input type="time" id="e-hora-fin">
         </div>
       </div>
       <div class="campo">
         <label for="e-motivo">Motivo (opcional)</label>
-        <input type="text" id="e-motivo" style="width:100%;" placeholder="ej: feriado nacional">
+        <input type="text" id="e-motivo" placeholder="ej: feriado nacional">
       </div>
       <div id="modal-excepcion-error" class="mensaje error oculto"></div>
       <div class="modal-acciones">
@@ -225,25 +241,25 @@
       <input type="hidden" id="d-id">
       <div class="campo">
         <label for="d-categoria">Categoría</label>
-        <select id="d-categoria" required style="width:100%;"></select>
+        <select id="d-categoria" required></select>
       </div>
       <div class="campo campo-doble">
         <div>
           <label for="d-desde">Carillas desde</label>
-          <input type="number" id="d-desde" min="0" required style="width:100%;">
+          <input type="number" id="d-desde" min="0" required>
         </div>
         <div>
           <label for="d-hasta">Carillas hasta (vacío = sin techo)</label>
-          <input type="number" id="d-hasta" min="0" style="width:100%;">
+          <input type="number" id="d-hasta" min="0">
         </div>
       </div>
       <div class="campo">
         <label for="d-porcentaje">% de descuento sobre el precio de envío</label>
-        <input type="number" id="d-porcentaje" min="0" max="100" step="0.01" required style="width:100%;">
+        <input type="number" id="d-porcentaje" min="0" max="100" step="0.01" required>
       </div>
       <div class="campo">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="d-activa" checked style="width:auto;"> Activa
+        <label class="campo-check">
+          <input type="checkbox" id="d-activa" checked> Activa
         </label>
       </div>
       <div id="modal-descuento-error" class="mensaje error oculto"></div>

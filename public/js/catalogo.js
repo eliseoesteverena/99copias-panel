@@ -185,7 +185,7 @@ function renderProductos() {
     <tr>
       <td class="mono">${escapeHtml(p.codigo)}</td>
       <td>${escapeHtml(p.descripcion)}</td>
-      <td>${p.categoria_nombre ? escapeHtml(p.categoria_nombre) : '<span style="color:var(--gris-texto);">Transversal</span>'}</td>
+      <td>${p.categoria_nombre ? escapeHtml(p.categoria_nombre) : '<span class="nota-inline">Transversal</span>'}</td>
       <td>${escapeHtml(p.unidad_medida)}</td>
       <td>${JERARQUIA_LABEL[p.jerarquia] || p.jerarquia}</td>
       <td class="num">${fmtMoneda(p.precio)}</td>

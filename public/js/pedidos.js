@@ -20,12 +20,27 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarProductosCache();
   cargarLista();
 
+  document.getElementById('btn-toggle-filtros').addEventListener('click', () => {
+    const panel = document.getElementById('filtros-panel');
+    const boton = document.getElementById('btn-toggle-filtros');
+    const abierto = !panel.classList.contains('oculto');
+    panel.classList.toggle('oculto', abierto);
+    boton.setAttribute('aria-expanded', String(!abierto));
+    boton.classList.toggle('activo', !abierto);
+  });
+
   document.getElementById('f-buscar').addEventListener('input', () => {
     clearTimeout(debounceBusqueda);
-    debounceBusqueda = setTimeout(cargarLista, 300);
+    debounceBusqueda = setTimeout(() => {
+      cargarLista();
+      actualizarFiltrosUI();
+    }, 300);
   });
   ['f-estado', 'f-pagado', 'f-zona', 'f-categoria', 'f-envio', 'f-fecha-desde', 'f-fecha-hasta'].forEach((id) => {
-    document.getElementById(id).addEventListener('change', cargarLista);
+    document.getElementById(id).addEventListener('change', () => {
+      cargarLista();
+      actualizarFiltrosUI();
+    });
   });
   document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
     document.getElementById('f-buscar').value = '';
@@ -37,8 +52,80 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('f-fecha-desde').value = '';
     document.getElementById('f-fecha-hasta').value = '';
     cargarLista();
+    actualizarFiltrosUI();
   });
+
+  actualizarFiltrosUI();
 });
+
+// Devuelve los filtros actualmente activos, leyendo directo del DOM (así
+// el label de cada chip siempre coincide con lo que el select muestra,
+// sin tener que mantener un mapeo de ids a nombres por separado).
+function filtrosActivos() {
+  const activos = [];
+  const buscar = document.getElementById('f-buscar').value.trim();
+  if (buscar) {
+    activos.push({ label: `"${buscar}"`, limpiar: () => (document.getElementById('f-buscar').value = '') });
+  }
+  [
+    ['f-estado', 'Estado'],
+    ['f-pagado', null],
+    ['f-envio', null],
+    ['f-zona', 'Zona'],
+    ['f-categoria', 'Categoría'],
+  ].forEach(([id, prefijo]) => {
+    const el = document.getElementById(id);
+    if (el.value !== '') {
+      const texto = el.options[el.selectedIndex].textContent;
+      activos.push({ label: prefijo ? `${prefijo}: ${texto}` : texto, limpiar: () => (el.value = '') });
+    }
+  });
+  const desde = document.getElementById('f-fecha-desde').value;
+  const hasta = document.getElementById('f-fecha-hasta').value;
+  if (desde || hasta) {
+    activos.push({
+      label: `Entrega: ${desde ? fmtFecha(desde) : '…'} – ${hasta ? fmtFecha(hasta) : '…'}`,
+      limpiar: () => {
+        document.getElementById('f-fecha-desde').value = '';
+        document.getElementById('f-fecha-hasta').value = '';
+      },
+    });
+  }
+  return activos;
+}
+
+// Sincroniza el contador del botón "Filtros" y los chips removibles con el
+// estado actual de los controles.
+function actualizarFiltrosUI() {
+  const activos = filtrosActivos();
+  const contador = document.getElementById('filtros-contador');
+  contador.textContent = activos.length;
+  contador.classList.toggle('oculto', activos.length === 0);
+
+  const contenedor = document.getElementById('chips-activos');
+  if (activos.length === 0) {
+    contenedor.classList.add('oculto');
+    contenedor.innerHTML = '';
+    return;
+  }
+  contenedor.classList.remove('oculto');
+  contenedor.innerHTML = activos
+    .map(
+      (f, i) => `
+    <button type="button" class="chip" data-chip="${i}">
+      ${escapeHtml(f.label)}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+    </button>`
+    )
+    .join('');
+  contenedor.querySelectorAll('[data-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activos[Number(btn.dataset.chip)].limpiar();
+      cargarLista();
+      actualizarFiltrosUI();
+    });
+  });
+}
 
 async function cargarZonasFiltro() {
   try {
@@ -109,7 +196,7 @@ async function cargarLista() {
   const contenedor = document.getElementById('lista-pedidos');
   const estadoMsg = document.getElementById('lista-estado');
   estadoMsg.className = 'mensaje oculto';
-  contenedor.innerHTML = '<div class="cargando" style="padding:14px;">Cargando…</div>';
+  contenedor.innerHTML = '<div class="cargando lista-cargando">Cargando…</div>';
 
   try {
     const query = construirQuery();
@@ -141,7 +228,7 @@ function renderLista(trabajos) {
           </div>
           <div class="pedido-item-meta">
             <span>${fmtFecha(t.fecha_entrega)} · ${t.zona_nombre ? escapeHtml(t.zona_nombre) : 'sin zona'}</span>
-            <span>${fmtMoneda(t.total)}</span>
+            <span class="num">${fmtMoneda(t.total)}</span>
           </div>
           <div class="pedido-item-badges">
             <span class="badge badge-${t.estado}">${ESTADOS_LABEL[t.estado] || t.estado}</span>
@@ -222,7 +309,7 @@ function renderDetalle(data) {
             t.con_envio
               ? `<dt>Costo de envío</dt><dd>${fmtMoneda(t.costo_envio)}${
                   t.zona_precio_envio_actual !== undefined && t.zona_precio_envio_actual !== t.costo_envio
-                    ? ` <span style="color:var(--gris-texto);font-size:11px;">(precio actual de la zona: ${fmtMoneda(t.zona_precio_envio_actual)} — este pedido quedó congelado al costo de cuando se hizo)</span>`
+                    ? ` <span class="nota-inline">(precio actual de la zona: ${fmtMoneda(t.zona_precio_envio_actual)} — este pedido quedó congelado al costo de cuando se hizo)</span>`
                     : ''
                 }</dd>`
               : ''
@@ -247,9 +334,9 @@ function renderDetalle(data) {
       </div>
     </div>
 
-    <h2>Archivos (${archivos.length})</h2>
+    <h2 class="detalle-subtitulo">Archivos (${archivos.length})</h2>
     <div class="archivos-header">
-      <span class="cargando" style="font-style:normal;color:var(--gris-texto);font-size:12px;">
+      <span class="archivos-header-nota">
         ${archivos.length === 0 ? 'Este pedido no tiene archivos.' : 'Clic en un archivo para abrirlo individualmente.'}
       </span>
       <div class="archivos-acciones-grupales">
@@ -262,10 +349,10 @@ function renderDetalle(data) {
     </div>
     <div class="archivos-total">Total del pedido: <strong>${fmtMoneda(t.total)}</strong></div>
 
-    <h2 style="margin-top:24px;">Pagos</h2>
+    <h2 class="detalle-subtitulo">Pagos</h2>
     ${
       pagos.length === 0
-        ? '<div class="vacio" style="padding:14px 0;">Sin pagos registrados todavía.</div>'
+        ? '<div class="vacio vacio-chico">Sin pagos registrados todavía.</div>'
         : `<table class="pagos-tabla">
             <thead><tr><th>Fecha</th><th>Estado MP</th><th>Detalle</th><th>Tipo</th><th class="num">Monto</th></tr></thead>
             <tbody>
@@ -326,6 +413,35 @@ function emparejarItem(archivo, items, indice) {
   return items[indice] || null;
 }
 
+// Arma la config de impresión como una frase legible en vez de una grilla
+// de campos — "ByN A4 · Simple faz · 2 copias · Abrochado". Solo suma un
+// dato a la frase si aporta algo (ej. "1 página/carilla" no se muestra
+// porque es el valor por defecto y no dice nada nuevo).
+function resumenConfiguracion(archivo, item) {
+  const partes = [];
+
+  const nombreProductoPrimario =
+    item && item.producto_primario_id != null
+      ? productosPorId[item.producto_primario_id]?.descripcion || `Producto #${item.producto_primario_id}`
+      : null;
+  if (nombreProductoPrimario) partes.push(nombreProductoPrimario);
+
+  const faz = FAZ_LABEL[archivo.faz] || archivo.faz;
+  if (faz) partes.push(faz);
+
+  const paginasPorCarilla = archivo.paginas_por_carilla || 1;
+  if (paginasPorCarilla > 1) partes.push(`${paginasPorCarilla} páginas/carilla`);
+
+  if (archivo.copias) partes.push(`${archivo.copias} ${Number(archivo.copias) === 1 ? 'copia' : 'copias'}`);
+
+  const acabado = (item && item.producto_secundario) || archivo.acabado;
+  if (acabado) partes.push(acabado);
+
+  if (archivo.rango && String(archivo.rango).trim()) partes.push(`págs. ${archivo.rango}`);
+
+  return partes.join(' · ') || 'Sin configuración de impresión';
+}
+
 function archivoCardHtml(trabajoId, archivo, item) {
   const tieneError = !!archivo.error_confirmacion;
   const ext = (archivo.nombre || '').split('.').pop().toLowerCase();
@@ -334,61 +450,31 @@ function archivoCardHtml(trabajoId, archivo, item) {
   if (ext === 'pdf') claseIcono = 'pdf';
   else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) claseIcono = 'img';
 
-  // Config de impresión tal cual la pidió el cliente. Se muestra completa
-  // acá (en la card de cada archivo) en vez de como columnas de una tabla
-  // general, porque no todos los archivos comparten los mismos campos y una
-  // tabla con una columna por dato se vuelve ilegible.
-  const configFilas = [
-    ['Páginas', archivo.paginas ?? '—'],
-    ['Copias', archivo.copias ?? '—'],
-    ['Faz', FAZ_LABEL[archivo.faz] || archivo.faz || '—'],
-    ['Rango', archivo.rango && String(archivo.rango).trim() ? archivo.rango : 'Completo'],
-    ['Páginas/carilla', archivo.paginas_por_carilla || 1],
-    ['Acabado', archivo.acabado || '—'],
-  ];
-  // hojas_fisicas = lo que efectivamente se imprime por copia (ya calculado
-  // por el wizard: ceil(páginas del rango / paginas_por_carilla)) — es lo
-  // que se compara contra productos.paginas_minimas, no "Páginas".
-  if (item && item.hojas_fisicas !== undefined && item.hojas_fisicas !== null) {
-    configFilas.push(['Hojas físicas', item.hojas_fisicas]);
-  }
-
-  let bloquePrecio = '';
-  if (item) {
-    const nombreProductoPrimario =
-      item.producto_primario_id != null
-        ? productosPorId[item.producto_primario_id]?.descripcion || `Producto #${item.producto_primario_id}`
-        : 'Producto 1º';
-    const nombreProductoSecundario = item.producto_secundario || 'Producto 2º';
-
-    bloquePrecio = `
-      <dl class="archivo-col archivo-precio">
-        <dt>${escapeHtml(nombreProductoPrimario)}</dt><dd class="num">${fmtMoneda(item.subtotal_primario)}</dd>
-        <dt>${escapeHtml(nombreProductoSecundario)}</dt><dd class="num">${fmtMoneda(item.subtotal_secundario)}</dd>
-        <dt class="archivo-precio-total-label">Total</dt><dd class="num archivo-precio-total-valor">${fmtMoneda(item.total)}</dd>
-      </dl>
-    `;
-  }
+  const tituloPrecio = item
+    ? `${item.producto_primario_id != null ? productosPorId[item.producto_primario_id]?.descripcion || 'Producto 1º' : 'Producto 1º'}: ${fmtMoneda(item.subtotal_primario)}${item.producto_secundario ? ` + ${item.producto_secundario}: ${fmtMoneda(item.subtotal_secundario)}` : ''}`
+    : '';
 
   return `
-    <div class="archivo-card ${tieneError ? 'con-error' : ''}">
-      <div class="archivo-miniatura ${claseIcono}">${escapeHtml(etiquetaIcono)}</div>
-      <div class="archivo-col archivo-col-info">
-        <div class="archivo-nombre">${escapeHtml(archivo.nombre)}</div>
-        ${tieneError ? `<div class="mensaje error" style="padding:4px 6px;font-size:11px;margin:4px 0;">⚠ ${escapeHtml(archivo.error_confirmacion)}</div>` : ''}
-        ${
-          archivo.r2_key
-            ? `<div class="archivo-acciones">
-                <button class="chico archivo-abrir" data-key="${escapeHtml(archivo.r2_key)}">Abrir</button>
-                <button class="chico archivo-descargar" data-key="${escapeHtml(archivo.r2_key)}">Descargar</button>
-              </div>`
-            : '<div class="archivo-acciones" style="color:var(--rojo);font-size:11px;">No disponible en el bucket</div>'
-        }
+    <div class="archivo-fila ${tieneError ? 'con-error' : ''}">
+      <div class="archivo-icono ${claseIcono}">${escapeHtml(etiquetaIcono)}</div>
+      <div class="archivo-cuerpo">
+        <div class="archivo-linea-top">
+          <span class="archivo-nombre">${escapeHtml(archivo.nombre)}</span>
+          ${item ? `<span class="archivo-total" title="${escapeHtml(tituloPrecio)}">${fmtMoneda(item.total)}</span>` : ''}
+        </div>
+        <div class="archivo-linea-config">
+          ${archivo.paginas ? `${archivo.paginas} pág. · ` : ''}${escapeHtml(resumenConfiguracion(archivo, item))}
+        </div>
+        ${tieneError ? `<div class="archivo-error">⚠ ${escapeHtml(archivo.error_confirmacion)}</div>` : ''}
+        <div class="archivo-acciones">
+          ${
+            archivo.r2_key
+              ? `<button class="chico fantasma archivo-abrir" data-key="${escapeHtml(archivo.r2_key)}">Abrir</button>
+                 <button class="chico fantasma archivo-descargar" data-key="${escapeHtml(archivo.r2_key)}">Descargar</button>`
+              : '<span class="archivo-no-disponible">No disponible en el bucket</span>'
+          }
+        </div>
       </div>
-      <dl class="archivo-col archivo-config">
-        ${configFilas.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd>`).join('')}
-      </dl>
-      ${bloquePrecio}
     </div>
   `;
 }
