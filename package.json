@@ -1,11 +1,14 @@
 {
-  "name": "99copias-panel",
+  "name": "panel-admin-99copias",
   "version": "1.0.0",
   "private": true,
-  "description": "Panel de administración - 99copias (pedidos, precios, turnos de entrega). Sin dependencias externas: el .zip grupal se arma con un armador propio en functions/api/lib/zip.js para no depender de npm install en el build de Cloudflare Pages.",
+  "description": "Panel de administración - 99copias (pedidos, catálogo, turnos, notificaciones push). IMPORTANTE: desde que se agregó @mmmike/web-push, el build command en el dashboard de Cloudflare Pages tiene que ser 'npm install' (no puede quedar vacío) para que las Functions puedan resolver la dependencia al bundlear. El .zip grupal de archivos sigue sin dependencias (armador propio en functions/api/lib/zip.js).",
   "scripts": {
     "dev": "wrangler pages dev public --d1 DB --r2 BUCKET",
     "deploy": "wrangler pages deploy public"
+  },
+  "dependencies": {
+    "@mmmike/web-push": "^0.1.0"
   },
   "devDependencies": {
     "wrangler": "^3.114.0"

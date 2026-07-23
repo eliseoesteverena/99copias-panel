@@ -6,6 +6,13 @@
 <title>Pedidos — Panel 99copias</title>
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/pedidos.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2453d9">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="99copias admin">
+<link rel="icon" href="/icons/favicon-64.png">
 </head>
 <body>
 
@@ -25,6 +32,14 @@
       Turnos
     </a>
   </nav>
+  <div class="top-nav-acciones">
+    <button id="btn-notificaciones" class="icono-boton" title="Activar notificaciones de pedidos nuevos" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+    </button>
+    <button id="btn-instalar" class="icono-boton oculto" title="Instalar la app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg>
+    </button>
+  </div>
 </header>
 
 <div class="pedidos-layout">
@@ -91,6 +106,7 @@
 </div>
 
 <script src="/js/api.js"></script>
+<script src="/js/push.js"></script>
 <script src="/js/pedidos.js"></script>
 </body>
 </html>

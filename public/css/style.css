@@ -117,6 +117,33 @@ h1, h2, h3 { font-weight: 700; margin: 0; color: var(--ink-900); }
   border-bottom: 1px solid var(--line);
 }
 
+.top-nav-acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.icono-boton {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-500);
+  flex: none;
+}
+
+.icono-boton:hover { background: var(--paper); color: var(--ink-900); }
+
+.icono-boton.activo {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.icono-boton svg { width: 19px; height: 19px; }
+
 .top-nav .marca {
   display: flex;
   align-items: center;

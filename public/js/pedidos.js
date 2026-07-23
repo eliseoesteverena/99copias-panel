@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarZonasFiltro();
   cargarCategoriasFiltro();
   cargarProductosCache();
-  cargarLista();
+  cargarLista().then(abrirPedidoDesdeUrl);
 
   document.getElementById('btn-toggle-filtros').addEventListener('click', () => {
     const panel = document.getElementById('filtros-panel');
@@ -125,6 +125,14 @@ function actualizarFiltrosUI() {
       actualizarFiltrosUI();
     });
   });
+}
+
+// Si la notificación push trae ?pedido=ID (o alguien comparte el link
+// directo a un pedido), lo seleccionamos automáticamente al cargar.
+function abrirPedidoDesdeUrl() {
+  const params = new URLSearchParams(location.search);
+  const pedidoId = params.get('pedido');
+  if (pedidoId) seleccionarPedido(Number(pedidoId));
 }
 
 async function cargarZonasFiltro() {
