@@ -1,6 +1,6 @@
 {
-  "name": "99copias Admin",
-  "short_name": "99copias Admin",
+  "name": "99copias · Panel de administración",
+  "short_name": "99copias admin",
   "description": "Gestión de pedidos, catálogo y turnos de entrega — 99copias",
   "start_url": "/index.html",
   "scope": "/",
@@ -9,6 +9,7 @@
   "background_color": "#faf9f7",
   "theme_color": "#2453d9",
   "lang": "es-AR",
+  "gcm_sender_id": "103953800507",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

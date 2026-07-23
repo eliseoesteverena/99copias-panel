@@ -68,6 +68,37 @@ async function actualizarEstadoBotonNotificaciones() {
   }
 }
 
+// Arma un mensaje más útil que el DOMException crudo cuando falla
+// pushManager.subscribe(). "Registration failed - push service error" es un
+// error puntual de navegadores Chromium — casi siempre por Brave bloqueando
+// los servicios de Google por privacidad, o por una red/firewall que
+// bloquea el acceso a fcm.googleapis.com.
+async function mensajeErrorSuscripcion(e) {
+  const mensajeOriginal = e && e.message ? e.message : String(e);
+
+  const esBrave = navigator.brave && (await navigator.brave.isBrave().catch(() => false));
+  if (esBrave) {
+    return (
+      'No se pudo activar: Brave bloquea por defecto los servicios de Google que ' +
+      'usan las notificaciones push.\n\nPara activarlo: brave://settings/privacy → ' +
+      '"Usar servicios de Google para la mensajería push" → activar. Después volvé ' +
+      'a tocar la campana.'
+    );
+  }
+
+  if (mensajeOriginal.includes('push service error') || mensajeOriginal.includes('Registration failed')) {
+    return (
+      `No se pudo activar: ${mensajeOriginal}\n\n` +
+      'Esto suele pasar por: un navegador que bloquea los servicios de Google ' +
+      '(Brave, algunos navegadores enfocados en privacidad), o una red/firewall que ' +
+      'bloquea fcm.googleapis.com (redes corporativas o educativas a veces lo hacen). ' +
+      'Probá desde otra red (ej. datos móviles) o desde Chrome/Edge sin restricciones.'
+    );
+  }
+
+  return `No se pudo actualizar la suscripción: ${mensajeOriginal}`;
+}
+
 async function alternarNotificaciones() {
   const boton = document.getElementById('btn-notificaciones');
   boton.disabled = true;
@@ -91,7 +122,7 @@ async function alternarNotificaciones() {
       await api.post('/api/push/subscribe', suscripcion.toJSON());
     }
   } catch (e) {
-    alert(`No se pudo actualizar la suscripción: ${e.message}`);
+    alert(await mensajeErrorSuscripcion(e));
   } finally {
     boton.disabled = false;
     await actualizarEstadoBotonNotificaciones();
