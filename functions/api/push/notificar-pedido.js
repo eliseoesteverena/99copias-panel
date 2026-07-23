@@ -59,7 +59,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const vapid = {
-      subject: env.VAPID_SUBJECT || 'mailto:admin@99copias.com',
+      subject: env.VAPID_SUBJECT || 'mailto:admin@99copias.com.ar',
       publicKey: env.VAPID_PUBLIC_KEY,
       privateKey: env.VAPID_PRIVATE_KEY,
     };
