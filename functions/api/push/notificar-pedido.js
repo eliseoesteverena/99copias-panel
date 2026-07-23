@@ -59,7 +59,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const vapid = {
-      subject: env.VAPID_SUBJECT || 'mailto:admin@99copias.com.ar',
+      subject: env.VAPID_SUBJECT || 'mailto:admin@99copias.com',
       publicKey: env.VAPID_PUBLIC_KEY,
       privateKey: env.VAPID_PRIVATE_KEY,
     };
@@ -77,6 +77,7 @@ export async function onRequestPost({ request, env }) {
 
     let enviados = 0;
     let fallidos = 0;
+    const errores = [];
 
     await Promise.all(
       suscripciones.map(async (sub) => {
@@ -96,14 +97,21 @@ export async function onRequestPost({ request, env }) {
           }
         } catch (e) {
           // error de red/servidor puntual: no borramos la suscripción,
-          // podría ser algo temporal.
+          // podría ser algo temporal. Lo logueamos (queda visible en
+          // Cloudflare → proyecto → Functions → Real-time Logs) y lo
+          // sumamos a la respuesta para poder diagnosticar sin tener que
+          // andar mirando logs — importante mientras esto es nuevo.
           fallidos++;
+          const detalleError = `${e.name || 'Error'}: ${e.message || e}`;
+          console.error(`Push falló para endpoint ${subscription.endpoint.slice(0, 60)}...:`, detalleError);
+          errores.push({ endpoint: subscription.endpoint.slice(0, 60) + '...', error: detalleError });
         }
       })
     );
 
-    return json({ ok: true, enviados, fallidos });
+    return json({ ok: true, enviados, fallidos, errores: errores.length ? errores : undefined });
   } catch (e) {
+    console.error('Error en /api/push/notificar-pedido:', e.name, e.message);
     return errorJson(`Error enviando notificaciones: ${e.message}`, 500);
   }
 }
