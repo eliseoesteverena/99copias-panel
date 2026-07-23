@@ -1,6 +1,6 @@
 {
-  "name": "99copias · Panel de administración",
-  "short_name": "99copias admin",
+  "name": "99copias Admin",
+  "short_name": "99copias Admin",
   "description": "Gestión de pedidos, catálogo y turnos de entrega — 99copias",
   "start_url": "/index.html",
   "scope": "/",
