@@ -63,6 +63,15 @@ async function actualizarEstadoBotonNotificaciones() {
     boton.classList.toggle('activo', activo);
     boton.setAttribute('aria-pressed', String(activo));
     boton.title = activo ? 'Notificaciones activadas — click para desactivar' : 'Activar notificaciones de pedidos nuevos';
+
+    // Auto-sincronización: si el navegador ya tiene una suscripción activa,
+    // la re-mandamos al backend igual. Es inofensivo si ya estaba guardada
+    // (el endpoint hace upsert por endpoint) y arregla solo el caso en que
+    // un POST anterior falló en silencio y quedó "suscripta acá pero el
+    // servidor nunca se enteró".
+    if (suscripcion) {
+      api.post('/api/push/subscribe', suscripcion.toJSON()).catch(() => {});
+    }
   } catch (e) {
     // si falla, dejamos el botón en su estado default sin romper la página
   }
@@ -109,6 +118,7 @@ async function alternarNotificaciones() {
     if (suscripcionActual) {
       await api.del('/api/push/subscribe?endpoint=' + encodeURIComponent(suscripcionActual.endpoint));
       await suscripcionActual.unsubscribe();
+      alert('Notificaciones desactivadas en este dispositivo.');
     } else {
       const permiso = await Notification.requestPermission();
       if (permiso !== 'granted') {
@@ -120,6 +130,14 @@ async function alternarNotificaciones() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
       await api.post('/api/push/subscribe', suscripcion.toJSON());
+      // Confirmación inmediata y visible: no depende de ningún push real
+      // (no espera al servidor ni a Google) — si el usuario ve esto, la
+      // suscripción quedó bien armada y guardada en el panel.
+      await registro.showNotification('Notificaciones activadas', {
+        body: 'Te vamos a avisar acá cuando entre un pedido nuevo.',
+        icon: '/icons/icon-192.png',
+        tag: 'confirmacion-activacion',
+      });
     }
   } catch (e) {
     alert(await mensajeErrorSuscripcion(e));
