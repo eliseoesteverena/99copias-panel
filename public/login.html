@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iniciar sesión — Panel 99copias</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2453d9">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/favicon-64.png">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/login.css">
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+</head>
+<body>
+
+<div class="login-fondo">
+  <main class="login-tarjeta">
+    <div class="marca login-marca"><span class="punto"></span>99copias · admin</div>
+    <h1>Iniciar sesión</h1>
+    <p class="pagina-intro" style="margin-bottom: var(--sp-5);">
+      Accedé con tu cuenta para ver pedidos, catálogo y turnos de entrega.
+    </p>
+
+    <div id="login-error" class="mensaje error oculto"></div>
+
+    <button id="btn-login" class="primario login-boton" disabled>
+      <span class="login-boton-texto">Iniciar sesión</span>
+      <span class="login-boton-spinner oculto"></span>
+    </button>
+  </main>
+</div>
+
+<script src="/auth.config.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const returnTo = params.get('returnTo') || '/index.html';
+
+  (async () => {
+    try {
+      await Auth.init(AUTH_CONFIG);
+      if (await Auth.isAuthenticated()) {
+        location.replace(returnTo);
+        return;
+      }
+    } catch (e) {
+      mostrarError(e.message || 'No se pudo inicializar Auth0. Revisá auth.config.js.');
+      console.error('[Auth init]', e);
+      return;
+    }
+    document.getElementById('btn-login').disabled = false;
+  })();
+
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const boton = document.getElementById('btn-login');
+    boton.disabled = true;
+    boton.querySelector('.login-boton-texto').classList.add('oculto');
+    boton.querySelector('.login-boton-spinner').classList.remove('oculto');
+    try {
+      await Auth.login({ returnTo });
+    } catch (e) {
+      mostrarError('No se pudo redirigir al login. Intentá de nuevo.');
+      console.error('[login]', e);
+      boton.disabled = false;
+      boton.querySelector('.login-boton-texto').classList.remove('oculto');
+      boton.querySelector('.login-boton-spinner').classList.add('oculto');
+    }
+  });
+
+  function mostrarError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.remove('oculto');
+  }
+</script>
+</body>
+</html>

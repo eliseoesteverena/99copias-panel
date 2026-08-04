@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Turnos de entrega — Panel 99copias</title>
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+<script src="/auth.config.js"></script>
+<script src="/js/auth.js"></script>
 <link rel="stylesheet" href="/css/style.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2453d9">
@@ -38,8 +41,13 @@
     <button id="btn-instalar" class="icono-boton oculto" title="Instalar la app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg>
     </button>
+    <button id="btn-logout" class="icono-boton" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
   </div>
 </header>
+
+<div id="auth-overlay" class="auth-overlay"><div class="auth-overlay-spinner"></div></div>
 
 <div class="pagina">
   <h1>Zonas, turnos y excepciones de entrega</h1>
@@ -287,6 +295,7 @@
 </div>
 
 <script src="/js/api.js"></script>
+<script src="/js/auth-ui.js"></script>
 <script src="/js/push.js"></script>
 <script src="/js/turnos.js"></script>
 </body>
