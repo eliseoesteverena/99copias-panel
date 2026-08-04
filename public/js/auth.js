@@ -24,7 +24,13 @@ const Auth = (() => {
     // no el redirectUri en sí.
     redirectUri: `${window.location.origin}/index.html`,
     logoutUri: `${window.location.origin}/login.html`,
-    cacheLocation: 'memory',
+    // 'localstorage' (no 'memory'): el panel es multi-página — cada click
+    // a otra pantalla es una navegación completa del navegador, no un
+    // cambio de vista de SPA. Con 'memory' la sesión vive solo en el JS de
+    // esa página puntual y se pierde apenas se navega a otra — funciona
+    // una vez y se rompe en la siguiente página. 'localstorage' persiste
+    // entre navegaciones, que es lo que este panel necesita.
+    cacheLocation: 'localstorage',
     useRefreshTokens: true,
   };
 
