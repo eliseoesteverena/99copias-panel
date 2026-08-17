@@ -46,7 +46,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (q) {
     condiciones.push(
-      '(c.nombre LIKE ? OR c.apellido LIKE ? OR c.documento_numero LIKE ?)'
+      '(pf.nombre LIKE ? OR pf.apellido LIKE ? OR pf.documento_numero LIKE ?)'
     );
     const like = `%${q}%`;
     params.push(like, like, like);
@@ -60,13 +60,16 @@ export async function onRequestGet({ request, env }) {
       t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
       t.zona_id, t.turno_entrega_id, t.categoria_id, t.con_envio, t.costo_envio,
       t.configuracion,
-      c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
-      c.documento_numero, c.email, c.celular,
+      t.user_id,
+      pf.nombre, pf.apellido, pf.documento_tipo, pf.documento_numero, pf.celular,
+      COALESCE(pf.email_contacto, u.email) as email,
+      u.isAnonymous as usuario_anonimo,
       z.nombre as zona_nombre, z.es_retiro,
       te.dia_semana, te.hora_inicio, te.hora_fin,
       cat.nombre as categoria_nombre
     FROM trabajos t
-    JOIN clientes c ON c.id = t.cliente_id
+    LEFT JOIN user u ON u.id = t.user_id
+    LEFT JOIN perfil_fiscal pf ON pf.user_id = t.user_id
     LEFT JOIN zonas z ON z.id = t.zona_id
     LEFT JOIN turnos_entrega te ON te.id = t.turno_entrega_id
     LEFT JOIN categorias cat ON cat.id = t.categoria_id

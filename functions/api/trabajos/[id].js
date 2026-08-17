@@ -13,13 +13,16 @@ export async function onRequestGet({ params, env }) {
         t.pagado, t.observaciones, t.creado_en, t.actualizado_en,
         t.configuracion, t.zona_id, t.turno_entrega_id, t.categoria_id,
         t.con_envio, t.costo_envio,
-        c.id as cliente_id, c.nombre, c.apellido, c.documento_tipo,
-        c.documento_numero, c.email, c.celular, c.direccion as cliente_direccion,
+        t.user_id,
+        pf.nombre, pf.apellido, pf.documento_tipo, pf.documento_numero, pf.celular,
+        COALESCE(pf.email_contacto, u.email) as email,
+        u.isAnonymous as usuario_anonimo,
         z.nombre as zona_nombre, z.es_retiro, z.precio_envio as zona_precio_envio_actual,
         te.dia_semana, te.hora_inicio, te.hora_fin,
         cat.nombre as categoria_nombre
       FROM trabajos t
-      JOIN clientes c ON c.id = t.cliente_id
+      LEFT JOIN user u ON u.id = t.user_id
+      LEFT JOIN perfil_fiscal pf ON pf.user_id = t.user_id
       LEFT JOIN zonas z ON z.id = t.zona_id
       LEFT JOIN turnos_entrega te ON te.id = t.turno_entrega_id
       LEFT JOIN categorias cat ON cat.id = t.categoria_id
@@ -32,7 +35,8 @@ export async function onRequestGet({ params, env }) {
 
     const pagos = await env.DB.prepare(
       `SELECT id, mp_preference_id, mp_payment_id, mp_status, mp_status_detail,
-              mp_payment_type, monto, moneda, creado_en, actualizado_en
+              mp_payment_type, monto, moneda, creado_en, actualizado_en,
+              medio, estado_revision, comprobante_r2_key, motivo_rechazo, revisado_en
        FROM pagos WHERE trabajo_id = ? ORDER BY creado_en DESC`
     )
       .bind(id)

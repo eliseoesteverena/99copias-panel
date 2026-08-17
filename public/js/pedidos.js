@@ -293,7 +293,7 @@ function renderDetalle(data) {
       <div>
         <h1>Pedido #${t.id} — ${escapeHtml(t.nombre)} ${escapeHtml(t.apellido)}</h1>
         <div class="detalle-cliente-info">
-          ${t.documento_tipo.toUpperCase()} ${escapeHtml(t.documento_numero)}
+          ${t.documento_tipo ? t.documento_tipo.toUpperCase() : 'Sin documento'} ${escapeHtml(t.documento_numero || '')}
           ${t.email ? ' · ' + escapeHtml(t.email) : ''}
           ${t.celular ? ' · ' + escapeHtml(t.celular) : ''}
         </div>
@@ -309,7 +309,7 @@ function renderDetalle(data) {
         <h2>Entrega</h2>
         <dl>
           <dt>Modalidad</dt><dd>${t.con_envio ? '🚚 Envío' : '🏠 Retiro en local'}</dd>
-          <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || t.cliente_direccion || '—')}</dd>
+          <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || '—')}</dd>
           <dt>Zona</dt><dd>${escapeHtml(t.zona_nombre || '—')}</dd>
           <dt>Turno</dt><dd>${turnoTexto}</dd>
           <dt>Fecha entrega</dt><dd>${fmtFecha(t.fecha_entrega)}</dd>

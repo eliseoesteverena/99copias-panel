@@ -40,10 +40,10 @@ export async function onRequestPost({ request, env }) {
   try {
     const trabajo = await env.DB.prepare(
       `SELECT t.id, t.total, t.con_envio,
-              c.nombre, c.apellido,
+              pf.nombre, pf.apellido,
               cat.nombre as categoria_nombre
        FROM trabajos t
-       JOIN clientes c ON c.id = t.cliente_id
+       LEFT JOIN perfil_fiscal pf ON pf.user_id = t.user_id
        LEFT JOIN categorias cat ON cat.id = t.categoria_id
        WHERE t.id = ?`
     )
@@ -70,7 +70,7 @@ export async function onRequestPost({ request, env }) {
 
     const payload = {
       title: `Nuevo pedido #${trabajo.id}`,
-      body: `${trabajo.nombre} ${trabajo.apellido} · ${detalle}`,
+      body: `${trabajo.nombre || 'Cliente'} ${trabajo.apellido || 'sin perfil'} · ${detalle}`,
       url: `/index.html?pedido=${trabajo.id}`,
       tag: `pedido-${trabajo.id}`,
     };
