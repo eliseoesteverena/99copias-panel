@@ -118,6 +118,42 @@
 .filtros-fechas input { height: 36px; font-size: 13.5px; }
 .filtros-fechas-guion { color: var(--ink-300); flex: none; }
 
+.filtro-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--ink-900);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-3);
+  height: 36px;
+}
+
+.filtro-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.banner-alerta {
+  display: block;
+  width: calc(100% - var(--sp-6));
+  margin: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--danger-soft);
+  border: 1px solid #f0c6c0;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.banner-alerta:hover { background: #f9dcd8; }
+
 .filtros-panel #btn-limpiar-filtros {
   grid-column: 1 / -1;
   justify-self: start;
@@ -401,6 +437,124 @@
 /* ---------- Pagos ---------- */
 
 .pagos-tabla td, .pagos-tabla th { font-size: 12.5px; }
+
+/* ---------- Comprobante de transferencia ---------- */
+
+.comprobante-card {
+  display: flex;
+  gap: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  margin-top: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.comprobante-preview {
+  flex: none;
+  width: 120px;
+}
+
+.comprobante-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  display: block;
+}
+
+.comprobante-link-pdf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: 12.5px;
+  padding: var(--sp-2);
+}
+
+.comprobante-info { flex: 1; min-width: 0; }
+
+.comprobante-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: var(--sp-2);
+}
+
+.comprobante-acciones {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+/* ---------- Mensajes ---------- */
+
+.mensajes-hilo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--sp-3);
+}
+
+.mensaje-burbuja {
+  max-width: 75%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+
+.mensaje-burbuja.es-operador {
+  align-self: flex-end;
+  background: var(--accent-soft);
+}
+
+.mensaje-burbuja.es-cliente {
+  align-self: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.mensaje-burbuja-autor {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-500);
+  margin-bottom: 2px;
+}
+
+.mensaje-burbuja-texto { white-space: pre-wrap; word-break: break-word; }
+
+.mensaje-burbuja-fecha {
+  font-size: 10.5px;
+  color: var(--ink-500);
+  margin-top: 4px;
+  text-align: right;
+}
+
+.mensaje-form {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  margin-bottom: var(--sp-6);
+}
+
+.mensaje-form textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 40px;
+  font-size: 13.5px;
+}
 
 /* ==========================================================================
    Responsive

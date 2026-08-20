@@ -93,6 +93,10 @@
         <select id="f-categoria">
           <option value="">Todas las categorías</option>
         </select>
+        <label class="campo-check filtro-check">
+          <input type="checkbox" id="f-comprobante-pendiente">
+          Con comprobante pendiente
+        </label>
         <div class="filtros-fechas">
           <input type="date" id="f-fecha-desde" title="Entrega desde">
           <span class="filtros-fechas-guion">–</span>
@@ -103,6 +107,7 @@
     </div>
 
     <div id="lista-estado" class="mensaje oculto"></div>
+    <button id="banner-comprobantes" class="banner-alerta oculto"></button>
     <div id="lista-pedidos" class="lista-pedidos"></div>
   </aside>
 

@@ -11,6 +11,7 @@ export async function onRequestGet({ request, env }) {
   const conEnvio = url.searchParams.get('con_envio');
   const fechaDesde = url.searchParams.get('fecha_desde');
   const fechaHasta = url.searchParams.get('fecha_hasta');
+  const comprobantePendiente = url.searchParams.get('comprobante_pendiente');
   const q = url.searchParams.get('q'); // busca por nombre/apellido/documento
 
   const condiciones = [];
@@ -44,6 +45,11 @@ export async function onRequestGet({ request, env }) {
     condiciones.push('t.fecha_entrega <= ?');
     params.push(fechaHasta);
   }
+  if (comprobantePendiente === '1') {
+    condiciones.push(
+      `EXISTS (SELECT 1 FROM pagos p WHERE p.trabajo_id = t.id AND p.medio = 'transferencia' AND p.estado_revision = 'pendiente')`
+    );
+  }
   if (q) {
     condiciones.push(
       '(pf.nombre LIKE ? OR pf.apellido LIKE ? OR pf.documento_numero LIKE ?)'
@@ -66,7 +72,15 @@ export async function onRequestGet({ request, env }) {
       u.isAnonymous as usuario_anonimo,
       z.nombre as zona_nombre, z.es_retiro,
       te.dia_semana, te.hora_inicio, te.hora_fin,
-      cat.nombre as categoria_nombre
+      cat.nombre as categoria_nombre,
+      EXISTS (
+        SELECT 1 FROM pagos p
+        WHERE p.trabajo_id = t.id AND p.medio = 'transferencia' AND p.estado_revision = 'pendiente'
+      ) as comprobante_pendiente,
+      (
+        SELECT COUNT(*) FROM mensajes_trabajo m
+        WHERE m.trabajo_id = t.id AND m.autor = 'cliente' AND m.leido_operador = 0
+      ) as mensajes_sin_leer
     FROM trabajos t
     LEFT JOIN user u ON u.id = t.user_id
     LEFT JOIN perfil_fiscal pf ON pf.user_id = t.user_id
@@ -96,8 +110,13 @@ export async function onRequestGet({ request, env }) {
       } catch {
         // configuracion corrupta o vacía, seguimos sin romper el listado
       }
-      const { configuracion, ...resto } = t;
-      return { ...resto, archivos_count: archivosCount, tiene_error_archivos: tieneError };
+      const { configuracion, comprobante_pendiente, ...resto } = t;
+      return {
+        ...resto,
+        archivos_count: archivosCount,
+        tiene_error_archivos: tieneError,
+        comprobante_pendiente: !!comprobante_pendiente,
+      };
     });
 
     return json({ trabajos });

@@ -1,6 +1,8 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
+import { llamarWizard } from '../lib/wizard.js';
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_proceso', 'listo', 'entregado'];
+const ESTADOS_QUE_AVISAN_AL_WIZARD = ['listo', 'entregado'];
 
 // GET /api/trabajos/:id -> detalle completo del pedido
 export async function onRequestGet({ params, env }) {
@@ -63,6 +65,13 @@ export async function onRequestGet({ params, env }) {
 }
 
 // PATCH /api/trabajos/:id  body: { estado } -> avanza el estado manualmente
+// Si el estado nuevo es 'listo' o 'entregado', además avisa al wizard para
+// que le mande la notificación correspondiente al cliente
+// (POST /api/panel/estado-actualizado). El UPDATE local ya se hizo antes de
+// esa llamada — si el aviso al wizard falla, el estado del pedido queda
+// igual guardado (no se revierte); solo se informa el fallo en la
+// respuesta para que el operador sepa que el cliente puede no haberse
+// enterado.
 export async function onRequestPatch({ params, request, env }) {
   const id = params.id;
   const body = await readJson(request);
@@ -86,7 +95,20 @@ export async function onRequestPatch({ params, request, env }) {
       .bind(body.estado, id)
       .run();
 
-    return json({ ok: true, id: Number(id), estado: body.estado });
+    const respuesta = { ok: true, id: Number(id), estado: body.estado };
+
+    if (ESTADOS_QUE_AVISAN_AL_WIZARD.includes(body.estado)) {
+      const resultado = await llamarWizard(env, '/api/panel/estado-actualizado', {
+        trabajo_id: Number(id),
+        estado: body.estado,
+      });
+      if (!resultado.ok) {
+        respuesta.avisoWizard = false;
+        respuesta.avisoWizardError = resultado.error;
+      }
+    }
+
+    return json(respuesta);
   } catch (e) {
     return errorJson(`Error actualizando el estado: ${e.message}`, 500);
   }

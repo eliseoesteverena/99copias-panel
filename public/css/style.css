@@ -507,6 +507,7 @@ td.acciones-col { text-align: right; }
 
 .badge-pendiente { color: var(--warn); background: var(--warn-soft); }
 .badge-en_proceso { color: var(--info); background: var(--info-soft); }
+.badge-info { color: var(--info); background: var(--info-soft); }
 .badge-listo { color: var(--ok); background: var(--ok-soft); }
 .badge-entregado { color: var(--ink-500); background: var(--paper); }
 .badge-pagado { color: var(--ok); background: var(--ok-soft); }
