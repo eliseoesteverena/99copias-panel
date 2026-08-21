@@ -1,4 +1,4 @@
-import { sendPushNotification } from '@mmmike/web-push';
+import { sendPushNotification, topicFromString } from '@mmmike/web-push';
 import { json, errorJson, readJson } from '../lib/utils.js';
 
 function fmtMoneda(n) {
@@ -86,7 +86,14 @@ export async function onRequestPost({ request, env }) {
           keys: { p256dh: sub.p256dh, auth: sub.auth },
         };
         try {
-          const ok = await sendPushNotification(subscription, payload, vapid, { ttl: 3600 });
+          // urgency 'high': en Android la notificación aparece como heads-up en
+          // vez de quedar solo en la bandeja. topic: si el dispositivo está
+          // offline, el push service colapsa los reenvíos del mismo pedido.
+          const ok = await sendPushNotification(subscription, payload, vapid, {
+            ttl: 3600,
+            urgency: 'high',
+            topic: topicFromString(payload.tag),
+          });
           if (ok) {
             enviados++;
           } else {
