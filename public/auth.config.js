@@ -10,8 +10,8 @@
  * URL de login) — no son secretos, no hace falta protegerlos.
  */
 const AUTH_CONFIG = {
-  domain: 'TU-TENANT.us.auth0.com',
-  clientId: 'TU_CLIENT_ID',
+  domain: 'dev-0z2lkf1fu6a4t6wl.us.auth0.com',
+  clientId: '1p8viINEFGY9y145ZdCh8ZRLGHoozBqq',
 
   // No hace falta tocar nada más de acá para abajo — auth.js ya arma los
   // valores por defecto (redirectUri, logoutUri) en base al dominio del
