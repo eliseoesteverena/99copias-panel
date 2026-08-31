@@ -1,4 +1,5 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
+import { llamarWizard } from '../lib/wizard.js';
 
 // GET /api/mensajes?trabajo_id=42
 // Trae el hilo completo de un pedido y de paso marca como leídos por el
@@ -33,9 +34,16 @@ export async function onRequestGet({ request, env }) {
 
 // POST /api/mensajes   body: { trabajo_id, mensaje }
 // El Panel escribe directo acá (misma D1, no pasa por ningún endpoint del
-// wizard) — a diferencia de la revisión de comprobantes, la mensajería no
-// tiene un efecto colateral sobre pagos/estado que justifique centralizar
-// la escritura del lado del wizard.
+// wizard para el guardado en sí) — a diferencia de la revisión de
+// comprobantes, la mensajería no tiene un efecto colateral sobre
+// pagos/estado que justifique centralizar la escritura del lado del wizard.
+//
+// Lo que SÍ requiere avisar al wizard es la notificación al cliente: el
+// mensaje ya quedó guardado en D1 antes de esta llamada (igual que
+// estado-actualizado), así que si el aviso falla no se pierde nada — el
+// mensaje sigue ahí, el cliente lo va a ver la próxima vez que entre, solo
+// que puede no enterarse al toque por notificación push. Se informa el
+// fallo en la respuesta (avisoWizard: false) para que el operador lo sepa.
 export async function onRequestPost({ request, env }) {
   const body = await readJson(request);
   if (!body || !body.trabajo_id || !body.mensaje || !body.mensaje.trim()) {
@@ -48,14 +56,33 @@ export async function onRequestPost({ request, env }) {
       .first();
     if (!trabajo) return errorJson('El pedido indicado no existe', 404);
 
+    const mensajeTexto = body.mensaje.trim();
     const res = await env.DB.prepare(
       `INSERT INTO mensajes_trabajo (trabajo_id, autor, mensaje, leido_operador)
        VALUES (?, 'operador', ?, 1)`
     )
-      .bind(body.trabajo_id, body.mensaje.trim())
+      .bind(body.trabajo_id, mensajeTexto)
       .run();
 
-    return json({ ok: true, id: res.meta.last_row_id }, 201);
+    const mensajeCreado = await env.DB.prepare(
+      `SELECT id, trabajo_id, autor, mensaje, leido_cliente, leido_operador, creado_en
+       FROM mensajes_trabajo WHERE id = ?`
+    )
+      .bind(res.meta.last_row_id)
+      .first();
+
+    const respuesta = { ok: true, mensaje: mensajeCreado };
+
+    const resultado = await llamarWizard(env, '/api/panel/mensaje-nuevo', {
+      trabajo_id: body.trabajo_id,
+      mensaje: mensajeTexto,
+    });
+    if (!resultado.ok) {
+      respuesta.avisoWizard = false;
+      respuesta.avisoWizardError = resultado.error;
+    }
+
+    return json(respuesta, 201);
   } catch (e) {
     return errorJson(`Error enviando el mensaje: ${e.message}`, 500);
   }

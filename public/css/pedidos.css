@@ -267,6 +267,85 @@
   justify-content: flex-end;
 }
 
+/* ---------- Carga suave (sin vaciar la pantalla) ---------- */
+
+.detalle-cargando { position: relative; }
+
+.detalle-cargando > * {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.detalle-cargando::after {
+  content: '';
+  position: fixed;
+  top: calc(var(--shell-bar) + var(--sp-4));
+  right: var(--sp-6);
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+  z-index: 5;
+}
+
+/* ---------- Pestañas del detalle ---------- */
+
+.detalle-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-5);
+}
+
+.detalle-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: var(--sp-2) var(--sp-1);
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-500);
+}
+
+.detalle-tab:hover { background: transparent; color: var(--ink-900); }
+
+.detalle-tab.activo {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.detalle-tab-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex: none;
+}
+
+.detalle-tab-contador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.detalle-tab-panel.oculto { display: none; }
+
 .detalle-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

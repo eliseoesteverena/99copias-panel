@@ -1,5 +1,6 @@
 // ---------- Estado ----------
 let pedidoSeleccionadoId = null;
+let tabActivaDetalle = 'info'; // 'info' | 'pagos' | 'mensajes' — se resetea solo al cambiar de pedido
 let debounceBusqueda = null;
 let productosPorId = {}; // id -> { descripcion, unidad_medida }
 
@@ -297,13 +298,24 @@ function renderLista(trabajos) {
 
 // ---------- Detalle ----------
 async function seleccionarPedido(id) {
+  const esPedidoDistinto = id !== pedidoSeleccionadoId;
   pedidoSeleccionadoId = id;
   document.querySelectorAll('.pedido-item').forEach((btn) => {
     btn.classList.toggle('seleccionado', Number(btn.dataset.id) === id);
   });
+  if (esPedidoDistinto) tabActivaDetalle = 'info';
 
   const col = document.getElementById('detalle-col');
-  col.innerHTML = '<div class="cargando">Cargando pedido…</div>';
+  const yaHabiaContenido = !!col.querySelector('.detalle-header');
+
+  // Si ya había un pedido cargado, no lo "vaciamos" a un cartel de carga
+  // (eso generaba el efecto de pantalla completa reescribiéndose en cada
+  // click) — lo dejamos visible pero atenuado hasta que llegue lo nuevo.
+  if (yaHabiaContenido) {
+    col.classList.add('detalle-cargando');
+  } else {
+    col.innerHTML = '<div class="cargando">Cargando pedido…</div>';
+  }
 
   try {
     const [data, mensajesData] = await Promise.all([
@@ -316,6 +328,8 @@ async function seleccionarPedido(id) {
     cargarLista();
   } catch (e) {
     col.innerHTML = `<div class="mensaje error">No se pudo cargar el pedido: ${e.message}</div>`;
+  } finally {
+    col.classList.remove('detalle-cargando');
   }
 }
 
@@ -335,6 +349,9 @@ function renderDetalle(data, mensajes) {
 
   const nombreCompleto = t.nombre ? `${escapeHtml(t.nombre)} ${escapeHtml(t.apellido)}` : 'Sin datos de contacto';
 
+  const hayComprobantePendiente = pagos.some((p) => p.medio === 'transferencia' && p.estado_revision === 'pendiente');
+  const mensajesSinLeer = mensajes.filter((m) => m.autor === 'cliente' && !m.leido_operador).length;
+
   col.innerHTML = `
     <div class="detalle-header">
       <div>
@@ -351,95 +368,118 @@ function renderDetalle(data, mensajes) {
       </div>
     </div>
 
-    <div class="detalle-grid">
-      <div class="detalle-bloque">
-        <h2>Entrega</h2>
-        <dl>
-          <dt>Modalidad</dt><dd>${t.con_envio ? '🚚 Envío' : '🏠 Retiro en local'}</dd>
-          <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || '—')}</dd>
-          <dt>Zona</dt><dd>${escapeHtml(t.zona_nombre || '—')}</dd>
-          <dt>Turno</dt><dd>${turnoTexto}</dd>
-          <dt>Fecha entrega</dt><dd>${fmtFecha(t.fecha_entrega)}</dd>
-          ${
-            t.con_envio
-              ? `<dt>Costo de envío</dt><dd>${fmtMoneda(t.costo_envio)}${
-                  t.zona_precio_envio_actual !== undefined && t.zona_precio_envio_actual !== t.costo_envio
-                    ? ` <span class="nota-inline">(precio actual de la zona: ${fmtMoneda(t.zona_precio_envio_actual)} — este pedido quedó congelado al costo de cuando se hizo)</span>`
-                    : ''
-                }</dd>`
-              : ''
-          }
-        </dl>
-      </div>
-      <div class="detalle-bloque">
-        <h2>Pedido</h2>
-        <dl>
-          <dt>Categoría</dt><dd>${escapeHtml(t.categoria_nombre || '—')}</dd>
-          <dt>Creado</dt><dd>${fmtFechaHora(t.creado_en)}</dd>
-          <dt>Actualizado</dt><dd>${fmtFechaHora(t.actualizado_en)}</dd>
-          ${
-            t.con_envio && t.costo_envio > 0
-              ? `<dt>Subtotal impresión</dt><dd>${fmtMoneda(t.total - t.costo_envio)}</dd>
-                 <dt>Envío</dt><dd>${fmtMoneda(t.costo_envio)}</dd>`
-              : ''
-          }
-          <dt>Total</dt><dd>${fmtMoneda(t.total)}</dd>
-          <dt>Observaciones</dt><dd>${escapeHtml(t.observaciones || '—')}</dd>
-        </dl>
-      </div>
+    <div class="detalle-tabs" role="tablist">
+      <button class="detalle-tab" data-tab="info" role="tab">Información y Archivos</button>
+      <button class="detalle-tab" data-tab="pagos" role="tab">
+        Pagos${hayComprobantePendiente ? '<span class="detalle-tab-punto"></span>' : ''}
+      </button>
+      <button class="detalle-tab" data-tab="mensajes" role="tab">
+        Mensajes${mensajesSinLeer > 0 ? `<span class="detalle-tab-contador">${mensajesSinLeer}</span>` : ''}
+      </button>
     </div>
 
-    <h2 class="detalle-subtitulo">Archivos (${archivos.length})</h2>
-    <div class="archivos-header">
-      <span class="archivos-header-nota">
-        ${archivos.length === 0 ? 'Este pedido no tiene archivos.' : 'Clic en un archivo para abrirlo individualmente.'}
-      </span>
-      <div class="archivos-acciones-grupales">
-        <button class="chico" id="btn-abrir-todos" ${archivos.length === 0 ? 'disabled' : ''}>Abrir todos (pestañas)</button>
-        <button class="chico acento" id="btn-descargar-zip" ${archivos.length === 0 ? 'disabled' : ''}>Descargar todos (.zip)</button>
+    <div class="detalle-tab-panel" data-tab-panel="info">
+      <div class="detalle-grid">
+        <div class="detalle-bloque">
+          <h2>Entrega</h2>
+          <dl>
+            <dt>Modalidad</dt><dd>${t.con_envio ? '🚚 Envío' : '🏠 Retiro en local'}</dd>
+            <dt>Dirección</dt><dd>${escapeHtml(t.direccion_entrega || '—')}</dd>
+            <dt>Zona</dt><dd>${escapeHtml(t.zona_nombre || '—')}</dd>
+            <dt>Turno</dt><dd>${turnoTexto}</dd>
+            <dt>Fecha entrega</dt><dd>${fmtFecha(t.fecha_entrega)}</dd>
+            ${
+              t.con_envio
+                ? `<dt>Costo de envío</dt><dd>${fmtMoneda(t.costo_envio)}${
+                    t.zona_precio_envio_actual !== undefined && t.zona_precio_envio_actual !== t.costo_envio
+                      ? ` <span class="nota-inline">(precio actual de la zona: ${fmtMoneda(t.zona_precio_envio_actual)} — este pedido quedó congelado al costo de cuando se hizo)</span>`
+                      : ''
+                  }</dd>`
+                : ''
+            }
+          </dl>
+        </div>
+        <div class="detalle-bloque">
+          <h2>Pedido</h2>
+          <dl>
+            <dt>Categoría</dt><dd>${escapeHtml(t.categoria_nombre || '—')}</dd>
+            <dt>Creado</dt><dd>${fmtFechaHora(t.creado_en)}</dd>
+            <dt>Actualizado</dt><dd>${fmtFechaHora(t.actualizado_en)}</dd>
+            ${
+              t.con_envio && t.costo_envio > 0
+                ? `<dt>Subtotal impresión</dt><dd>${fmtMoneda(t.total - t.costo_envio)}</dd>
+                   <dt>Envío</dt><dd>${fmtMoneda(t.costo_envio)}</dd>`
+                : ''
+            }
+            <dt>Total</dt><dd>${fmtMoneda(t.total)}</dd>
+            <dt>Observaciones</dt><dd>${escapeHtml(t.observaciones || '—')}</dd>
+          </dl>
+        </div>
       </div>
-    </div>
-    <div class="archivos-grid" id="archivos-grid">
-      ${archivos.map((a, i) => archivoCardHtml(t.id, a, emparejarItem(a, items, i))).join('')}
-    </div>
-    <div class="archivos-total">Total del pedido: <strong>${fmtMoneda(t.total)}</strong></div>
 
-    <h2 class="detalle-subtitulo">Pagos</h2>
-    ${
-      pagos.length === 0
-        ? '<div class="vacio vacio-chico">Sin pagos registrados todavía.</div>'
-        : `<table class="pagos-tabla">
-            <thead><tr><th>Fecha</th><th>Medio</th><th>Estado</th><th>Detalle</th><th class="num">Monto</th></tr></thead>
-            <tbody>
-              ${pagos
-                .map(
-                  (p) => `<tr>
-                    <td>${fmtFechaHora(p.creado_en)}</td>
-                    <td>${p.medio === 'transferencia' ? 'Transferencia' : 'Mercado Pago'}</td>
-                    <td>${p.medio === 'transferencia' ? escapeHtml(p.estado_revision || '—') : escapeHtml(p.mp_status || '—')}</td>
-                    <td>${escapeHtml(p.medio === 'transferencia' ? p.motivo_rechazo || '—' : p.mp_status_detail || '—')}</td>
-                    <td class="num">${fmtMoneda(p.monto)}</td>
-                  </tr>`
-                )
-                .join('')}
-            </tbody>
-          </table>`
-    }
-    ${pagos.filter((p) => p.medio === 'transferencia').map((p) => comprobanteCardHtml(p)).join('')}
+      <h2 class="detalle-subtitulo" style="margin-top:0;">Archivos (${archivos.length})</h2>
+      <div class="archivos-header">
+        <span class="archivos-header-nota">
+          ${archivos.length === 0 ? 'Este pedido no tiene archivos.' : 'Clic en un archivo para abrirlo individualmente.'}
+        </span>
+        <div class="archivos-acciones-grupales">
+          <button class="chico" id="btn-abrir-todos" ${archivos.length === 0 ? 'disabled' : ''}>Abrir todos (pestañas)</button>
+          <button class="chico acento" id="btn-descargar-zip" ${archivos.length === 0 ? 'disabled' : ''}>Descargar todos (.zip)</button>
+        </div>
+      </div>
+      <div class="archivos-grid" id="archivos-grid">
+        ${archivos.map((a, i) => archivoCardHtml(t.id, a, emparejarItem(a, items, i))).join('')}
+      </div>
+      <div class="archivos-total">Total del pedido: <strong>${fmtMoneda(t.total)}</strong></div>
+    </div>
 
-    <h2 class="detalle-subtitulo">Mensajes</h2>
-    <div class="mensajes-hilo" id="mensajes-hilo">
+    <div class="detalle-tab-panel" data-tab-panel="pagos">
       ${
-        mensajes.length === 0
-          ? '<div class="vacio vacio-chico">Todavía no hay mensajes en este pedido.</div>'
-          : mensajes.map((m) => mensajeBurbujaHtml(m)).join('')
+        pagos.length === 0
+          ? '<div class="vacio vacio-chico">Sin pagos registrados todavía.</div>'
+          : `<table class="pagos-tabla">
+              <thead><tr><th>Fecha</th><th>Medio</th><th>Estado</th><th>Detalle</th><th class="num">Monto</th></tr></thead>
+              <tbody>
+                ${pagos
+                  .map(
+                    (p) => `<tr>
+                      <td>${fmtFechaHora(p.creado_en)}</td>
+                      <td>${p.medio === 'transferencia' ? 'Transferencia' : 'Mercado Pago'}</td>
+                      <td>${p.medio === 'transferencia' ? escapeHtml(p.estado_revision || '—') : escapeHtml(p.mp_status || '—')}</td>
+                      <td>${escapeHtml(p.medio === 'transferencia' ? p.motivo_rechazo || '—' : p.mp_status_detail || '—')}</td>
+                      <td class="num">${fmtMoneda(p.monto)}</td>
+                    </tr>`
+                  )
+                  .join('')}
+              </tbody>
+            </table>`
       }
+      ${pagos.filter((p) => p.medio === 'transferencia').map((p) => comprobanteCardHtml(p)).join('')}
     </div>
-    <form id="form-mensaje" class="mensaje-form">
-      <textarea id="mensaje-texto" placeholder="Escribir un mensaje para el cliente…" rows="2"></textarea>
-      <button type="submit" class="primario chico">Enviar</button>
-    </form>
+
+    <div class="detalle-tab-panel" data-tab-panel="mensajes">
+      <div class="mensajes-hilo" id="mensajes-hilo">
+        ${
+          mensajes.length === 0
+            ? '<div class="vacio vacio-chico">Todavía no hay mensajes en este pedido.</div>'
+            : mensajes.map((m) => mensajeBurbujaHtml(m)).join('')
+        }
+      </div>
+      <form id="form-mensaje" class="mensaje-form">
+        <textarea id="mensaje-texto" placeholder="Escribir un mensaje para el cliente…" rows="2"></textarea>
+        <button type="submit" class="primario chico">Enviar</button>
+      </form>
+    </div>
   `;
+
+  // pestañas
+  document.querySelectorAll('.detalle-tab').forEach((btn) => {
+    btn.addEventListener('click', () => activarTabDetalle(btn.dataset.tab));
+  });
+  activarTabDetalle(tabActivaDetalle);
+  // el hilo de mensajes arranca scrolleado al final (el mensaje más reciente)
+  const hilo = document.getElementById('mensajes-hilo');
+  if (hilo) hilo.scrollTop = hilo.scrollHeight;
 
   // eventos de cambio de estado
   document.querySelectorAll('#botones-estado button').forEach((btn) => {
@@ -704,11 +744,36 @@ async function enviarMensaje(trabajoId) {
   const boton = document.querySelector('#form-mensaje button');
   boton.disabled = true;
   try {
-    await api.post('/api/mensajes', { trabajo_id: trabajoId, mensaje });
-    await seleccionarPedido(trabajoId);
+    const data = await api.post('/api/mensajes', { trabajo_id: trabajoId, mensaje });
+    textarea.value = '';
+
+    const hilo = document.getElementById('mensajes-hilo');
+    const vacio = hilo.querySelector('.vacio');
+    if (vacio) vacio.remove();
+    hilo.insertAdjacentHTML('beforeend', mensajeBurbujaHtml(data.mensaje));
+    hilo.scrollTop = hilo.scrollHeight;
+
+    if (data.avisoWizard === false) {
+      alert(
+        `El mensaje se guardó, pero no se pudo avisar al cliente por notificación ` +
+          `(${data.avisoWizardError || 'error desconocido'}). Igual lo va a ver la próxima vez que entre a su pedido.`
+      );
+    }
   } catch (e) {
     alert(`No se pudo enviar el mensaje: ${e.message}`);
   } finally {
     boton.disabled = false;
   }
+}
+
+function activarTabDetalle(tab) {
+  tabActivaDetalle = tab;
+  document.querySelectorAll('.detalle-tab').forEach((btn) => {
+    const activo = btn.dataset.tab === tab;
+    btn.classList.toggle('activo', activo);
+    btn.setAttribute('aria-selected', String(activo));
+  });
+  document.querySelectorAll('.detalle-tab-panel').forEach((panel) => {
+    panel.classList.toggle('oculto', panel.dataset.tabPanel !== tab);
+  });
 }
