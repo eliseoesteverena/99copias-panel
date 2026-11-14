@@ -17,6 +17,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-nuevo-turno').addEventListener('click', () => abrirModalTurno(null));
   document.getElementById('form-turno').addEventListener('submit', guardarTurno);
   document.getElementById('filtro-zona-turnos').addEventListener('change', renderTurnos);
+  document.getElementById('t-zona-todas').addEventListener('change', (e) => {
+    document.querySelectorAll('#t-zonas-lista input[type=checkbox]').forEach((cb) => (cb.checked = e.target.checked));
+    actualizarResumenAltaTurnos();
+  });
+  document.getElementById('t-zonas-lista').addEventListener('change', () => {
+    sincronizarTodasLasZonasTurno();
+    actualizarResumenAltaTurnos();
+  });
+  document.getElementById('t-dias-lista').addEventListener('change', actualizarResumenAltaTurnos);
+  document.getElementById('t-dias-lunvie').addEventListener('click', () => marcarDiasTurno([1, 2, 3, 4, 5]));
+  document.getElementById('t-dias-todos').addEventListener('click', () => marcarDiasTurno([0, 1, 2, 3, 4, 5, 6]));
+  document.getElementById('t-dias-ninguno').addEventListener('click', () => marcarDiasTurno([]));
+  ['t-hora-inicio', 't-hora-fin'].forEach((id) =>
+    document.getElementById(id).addEventListener('input', actualizarResumenAltaTurnos)
+  );
 
   // --- excepciones ---
   document.getElementById('btn-nueva-excepcion').addEventListener('click', abrirModalExcepcion);
@@ -228,17 +243,44 @@ function renderTurnos() {
   );
 }
 
+const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0]; // lunes primero, domingo al final
+
 function abrirModalTurno(id) {
   if (zonasCache.length === 0) {
     alert('Primero tenés que crear al menos una zona.');
     return;
   }
   const turno = id ? turnosCache.find((t) => t.id === id) : null;
+  const esAlta = !turno;
   document.getElementById('modal-turno-titulo').textContent = turno ? 'Editar turno' : 'Nuevo turno';
   document.getElementById('modal-turno-error').className = 'mensaje error oculto';
   document.getElementById('t-id').value = turno ? turno.id : '';
-  document.getElementById('t-zona').value = turno ? turno.zona_id : zonasCache[0].id;
-  document.getElementById('t-dia').value = turno ? turno.dia_semana : '1';
+
+  // Alta = multiselección de zonas y días. Edición = una zona y un día, como siempre.
+  document.getElementById('t-grupo-multi').classList.toggle('oculto', !esAlta);
+  document.getElementById('t-grupo-zona-simple').classList.toggle('oculto', esAlta);
+  document.getElementById('t-grupo-dia-simple').classList.toggle('oculto', esAlta);
+  document.getElementById('t-resumen').classList.add('oculto');
+  document.getElementById('t-guardar').textContent = esAlta ? 'Crear turnos' : 'Guardar';
+
+  if (esAlta) {
+    // Sin nada tildado de entrada: crear turnos en zonas/días de más es peor que tener que tildar.
+    document.getElementById('t-zonas-lista').innerHTML = zonasCache
+      .map(
+        (z) => `<label class="campo-check"><input type="checkbox" data-zona-id="${z.id}"> ${escapeHtml(z.nombre)}` +
+          `${z.es_retiro ? ' <span class="nota-inline">(retiro)</span>' : ''}` +
+          `${z.activa ? '' : ' <span class="nota-inline">(inactiva)</span>'}</label>`
+      )
+      .join('');
+    document.getElementById('t-zona-todas').checked = false;
+    document.getElementById('t-zona-todas').indeterminate = false;
+    document.getElementById('t-dias-lista').innerHTML = ORDEN_DIAS.map(
+      (d) => `<label class="campo-check"><input type="checkbox" data-dia="${d}"> ${DIAS[d]}</label>`
+    ).join('');
+  } else {
+    document.getElementById('t-zona').value = turno.zona_id;
+    document.getElementById('t-dia').value = turno.dia_semana;
+  }
   document.getElementById('t-hora-inicio').value = turno ? turno.hora_inicio : '';
   document.getElementById('t-hora-fin').value = turno ? turno.hora_fin : '';
   document.getElementById('t-capacidad').value = turno && turno.capacidad_maxima !== null ? turno.capacidad_maxima : '';
@@ -246,28 +288,128 @@ function abrirModalTurno(id) {
   document.getElementById('modal-turno-fondo').classList.remove('oculto');
 }
 
+function zonasTildadasTurno() {
+  return [...document.querySelectorAll('#t-zonas-lista input:checked')].map((cb) => Number(cb.dataset.zonaId));
+}
+function diasTildadosTurno() {
+  return [...document.querySelectorAll('#t-dias-lista input:checked')].map((cb) => Number(cb.dataset.dia));
+}
+
+function sincronizarTodasLasZonasTurno() {
+  const checks = [...document.querySelectorAll('#t-zonas-lista input[type=checkbox]')];
+  const marcadas = checks.filter((cb) => cb.checked).length;
+  const todas = document.getElementById('t-zona-todas');
+  todas.checked = checks.length > 0 && marcadas === checks.length;
+  todas.indeterminate = marcadas > 0 && marcadas < checks.length;
+}
+
+function marcarDiasTurno(dias) {
+  document.querySelectorAll('#t-dias-lista input[type=checkbox]').forEach((cb) => {
+    cb.checked = dias.includes(Number(cb.dataset.dia));
+  });
+  actualizarResumenAltaTurnos();
+}
+
+// Resumen en vivo del alta: cuántos turnos se van a crear, cuántos ya existen (se omiten) y
+// cuántos se superponen con otro turno de la misma zona y día. Se calcula con turnosCache; el
+// servidor igual vuelve a omitir duplicados, así que esto es informativo.
+function actualizarResumenAltaTurnos() {
+  const box = document.getElementById('t-resumen');
+  if (document.getElementById('t-id').value) return;
+  const zonas = zonasTildadasTurno();
+  const dias = diasTildadosTurno();
+  const inicio = document.getElementById('t-hora-inicio').value;
+  const fin = document.getElementById('t-hora-fin').value;
+  if (!zonas.length || !dias.length) {
+    box.classList.add('oculto');
+    return;
+  }
+
+  const combinaciones = zonas.length * dias.length;
+  let duplicados = 0;
+  let superpuestos = 0;
+  if (inicio && fin && fin > inicio) {
+    zonas.forEach((z) =>
+      dias.forEach((d) => {
+        const mismos = turnosCache.filter((t) => t.zona_id === z && t.dia_semana === d);
+        if (mismos.some((t) => t.hora_inicio === inicio && t.hora_fin === fin)) duplicados++;
+        else if (mismos.some((t) => inicio < t.hora_fin && t.hora_inicio < fin)) superpuestos++;
+      })
+    );
+  }
+  const crear = combinaciones - duplicados;
+  let texto = `Se van a crear ${crear} ${crear === 1 ? 'turno' : 'turnos'} (${zonas.length} ${zonas.length === 1 ? 'zona' : 'zonas'} × ${dias.length} ${dias.length === 1 ? 'día' : 'días'}).`;
+  if (duplicados) texto += ` ${duplicados} ya ${duplicados === 1 ? 'existe' : 'existen'} igual y se ${duplicados === 1 ? 'omite' : 'omiten'}.`;
+  if (superpuestos) texto += ` ⚠ ${superpuestos} se ${superpuestos === 1 ? 'superpone' : 'superponen'} con otro turno de la misma zona y día.`;
+  box.textContent = texto;
+  box.classList.remove('oculto');
+}
+
 async function guardarTurno(e) {
   e.preventDefault();
   const id = document.getElementById('t-id').value;
   const capacidadRaw = document.getElementById('t-capacidad').value;
-  const body = {
-    zona_id: Number(document.getElementById('t-zona').value),
-    dia_semana: Number(document.getElementById('t-dia').value),
-    hora_inicio: document.getElementById('t-hora-inicio').value,
-    hora_fin: document.getElementById('t-hora-fin').value,
-    capacidad_maxima: capacidadRaw === '' ? '' : Number(capacidadRaw),
-    activo: document.getElementById('t-activo').checked,
-  };
   const errorBox = document.getElementById('modal-turno-error');
   errorBox.className = 'mensaje error oculto';
+  const mostrarError = (msg) => {
+    errorBox.textContent = msg;
+    errorBox.className = 'mensaje error';
+  };
+
+  // --- edición de un turno existente (igual que antes) ---
+  if (id) {
+    const body = {
+      zona_id: Number(document.getElementById('t-zona').value),
+      dia_semana: Number(document.getElementById('t-dia').value),
+      hora_inicio: document.getElementById('t-hora-inicio').value,
+      hora_fin: document.getElementById('t-hora-fin').value,
+      capacidad_maxima: capacidadRaw === '' ? '' : Number(capacidadRaw),
+      activo: document.getElementById('t-activo').checked,
+    };
+    try {
+      await api.put(`/api/turnos/${id}`, body);
+      cerrarModal('modal-turno-fondo');
+      await cargarTurnos();
+    } catch (e2) {
+      mostrarError(e2.message);
+    }
+    return;
+  }
+
+  // --- alta masiva: zonas × días ---
+  const zonas = zonasTildadasTurno();
+  const dias = diasTildadosTurno();
+  const inicio = document.getElementById('t-hora-inicio').value;
+  const fin = document.getElementById('t-hora-fin').value;
+  if (!zonas.length) return mostrarError('Elegí al menos una zona.');
+  if (!dias.length) return mostrarError('Elegí al menos un día de la semana.');
+  if (fin <= inicio) return mostrarError('La hora de fin tiene que ser posterior a la de inicio.');
+
+  const boton = document.getElementById('t-guardar');
+  boton.disabled = true;
   try {
-    if (id) await api.put(`/api/turnos/${id}`, body);
-    else await api.post('/api/turnos', body);
+    const r = await api.post('/api/turnos/lote', {
+      zona_ids: zonas,
+      dias_semana: dias,
+      hora_inicio: inicio,
+      hora_fin: fin,
+      capacidad_maxima: capacidadRaw === '' ? '' : Number(capacidadRaw),
+      activo: document.getElementById('t-activo').checked,
+    });
+    if (r.creados === 0) {
+      mostrarError('Todos esos turnos ya existían, no se creó ninguno.');
+      return;
+    }
     cerrarModal('modal-turno-fondo');
     await cargarTurnos();
+    avisoGlobal(
+      `Se ${r.creados === 1 ? 'creó 1 turno' : `crearon ${r.creados} turnos`}` +
+        (r.omitidos ? ` (${r.omitidos} ya ${r.omitidos === 1 ? 'existía' : 'existían'} y se ${r.omitidos === 1 ? 'omitió' : 'omitieron'})` : '') + '.'
+    );
   } catch (e2) {
-    errorBox.textContent = e2.message;
-    errorBox.className = 'mensaje error';
+    mostrarError(e2.message);
+  } finally {
+    boton.disabled = false;
   }
 }
 

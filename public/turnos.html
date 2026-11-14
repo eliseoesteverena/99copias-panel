@@ -172,11 +172,30 @@
     <h2 id="modal-turno-titulo">Nuevo turno</h2>
     <form id="form-turno">
       <input type="hidden" id="t-id">
-      <div class="campo">
+      <!-- Alta: varias zonas y varios días de una vez -->
+      <div id="t-grupo-multi">
+        <div class="campo">
+          <label>Zonas</label>
+          <label class="campo-check"><input type="checkbox" id="t-zona-todas"> <strong>Todas las zonas</strong></label>
+          <div id="t-zonas-lista" style="padding-left:22px"></div>
+        </div>
+        <div class="campo">
+          <label>Días de la semana</label>
+          <div id="t-dias-lista" style="display:flex;flex-wrap:wrap;gap:4px 16px"></div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button type="button" class="chico" id="t-dias-lunvie">Lun a Vie</button>
+            <button type="button" class="chico" id="t-dias-todos">Todos</button>
+            <button type="button" class="chico" id="t-dias-ninguno">Ninguno</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edición de un turno existente: una zona y un día -->
+      <div class="campo" id="t-grupo-zona-simple">
         <label for="t-zona">Zona</label>
         <select id="t-zona" required></select>
       </div>
-      <div class="campo">
+      <div class="campo" id="t-grupo-dia-simple">
         <label for="t-dia">Día de la semana</label>
         <select id="t-dia" required>
           <option value="0">Domingo</option>
@@ -207,10 +226,11 @@
           <input type="checkbox" id="t-activo" checked> Activo
         </label>
       </div>
+      <p class="campo-ayuda oculto" id="t-resumen"></p>
       <div id="modal-turno-error" class="mensaje error oculto"></div>
       <div class="modal-acciones">
         <button type="button" data-cerrar="modal-turno-fondo">Cancelar</button>
-        <button type="submit" class="primario">Guardar</button>
+        <button type="submit" class="primario" id="t-guardar">Guardar</button>
       </div>
     </form>
   </div>
