@@ -91,8 +91,16 @@
   <section class="seccion">
     <div class="seccion-header">
       <h2>Excepciones puntuales</h2>
-      <button class="chico primario" id="btn-nueva-excepcion">+ Nueva excepción</button>
+      <div class="seccion-header-acciones">
+        <button class="chico primario" id="btn-cancelar-fechas">Cancelar entregas…</button>
+        <button class="chico" id="btn-nueva-excepcion">+ Nueva excepción</button>
+      </div>
     </div>
+    <p class="seccion-nota">
+      <strong>Cancelar entregas</strong> cierra una fecha (o un rango) para varias zonas de un
+      saque, y queda agrupada en una sola fila que se puede revertir con un click.
+      <strong>Nueva excepción</strong> sirve para cambiar capacidad u horario de un turno puntual.
+    </p>
     <div class="tabla-wrap">
       <table>
       <thead>
@@ -205,6 +213,49 @@
         <button type="submit" class="primario">Guardar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL CANCELAR ENTREGAS (masivo) ===================== -->
+<div class="modal-fondo oculto" id="modal-cancelacion-fondo">
+  <div class="modal">
+    <h2>Cancelar entregas</h2>
+
+    <form id="form-cancelacion">
+      <div class="campo campo-doble">
+        <div>
+          <label for="c-desde">Desde</label>
+          <input type="date" id="c-desde" required>
+        </div>
+        <div>
+          <label for="c-hasta">Hasta (vacío = solo ese día)</label>
+          <input type="date" id="c-hasta">
+        </div>
+      </div>
+      <div class="campo">
+        <label>Zonas</label>
+        <label class="campo-check"><input type="checkbox" id="c-zona-todas" checked> <strong>Todas las zonas</strong></label>
+        <div id="c-zonas-lista" style="padding-left:22px"></div>
+      </div>
+      <div class="campo">
+        <label for="c-motivo">Motivo (opcional)</label>
+        <input type="text" id="c-motivo" maxlength="200" placeholder="ej: feriado, vacaciones">
+      </div>
+      <div id="modal-cancelacion-error" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" data-cerrar="modal-cancelacion-fondo">Cerrar</button>
+        <button type="submit" class="primario">Revisar</button>
+      </div>
+    </form>
+
+    <div id="c-paso-resumen" class="oculto">
+      <div id="c-resumen"></div>
+      <div id="modal-cancelacion-error-2" class="mensaje error oculto"></div>
+      <div class="modal-acciones">
+        <button type="button" id="c-volver">Volver</button>
+        <button type="button" id="c-confirmar" class="peligro">Confirmar cancelación</button>
+      </div>
+    </div>
   </div>
 </div>
 

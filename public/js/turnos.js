@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- excepciones ---
   document.getElementById('btn-nueva-excepcion').addEventListener('click', abrirModalExcepcion);
+  document.getElementById('btn-cancelar-fechas').addEventListener('click', abrirModalCancelacion);
+  document.getElementById('form-cancelacion').addEventListener('submit', revisarCancelacion);
+  document.getElementById('c-volver').addEventListener('click', volverACancelacion);
+  document.getElementById('c-confirmar').addEventListener('click', confirmarCancelacion);
+  document.getElementById('c-zona-todas').addEventListener('change', (e) => {
+    document.querySelectorAll('#c-zonas-lista input[type=checkbox]').forEach((cb) => (cb.checked = e.target.checked));
+  });
+  document.getElementById('c-zonas-lista').addEventListener('change', sincronizarTodasLasZonas);
   document.getElementById('form-excepcion').addEventListener('submit', guardarExcepcion);
   document.getElementById('e-tipo').addEventListener('change', actualizarCamposExcepcion);
 
@@ -295,34 +303,105 @@ const TIPO_LABEL = {
   horario_modificado: 'Horario modificado',
 };
 
+function detalleExcepcion(ex) {
+  if (ex.tipo === 'capacidad_modificada') return `Capacidad: ${ex.capacidad_maxima}`;
+  if (ex.tipo === 'horario_modificado') return `${ex.hora_inicio}–${ex.hora_fin}`;
+  return '—';
+}
+
+function filaExcepcion(ex, { hijaDeLote = null } = {}) {
+  const atributos = hijaDeLote
+    ? ` class="oculto" data-lote-hijo="${escapeHtml(hijaDeLote)}" style="background:var(--paper)"`
+    : '';
+  return `
+      <tr${atributos}>
+        <td>${hijaDeLote ? '<span class="nota-inline">↳</span> ' : ''}${escapeHtml(ex.zona_nombre)}</td>
+        <td>${DIAS[ex.dia_semana]} ${ex.turno_hora_inicio}–${ex.turno_hora_fin}</td>
+        <td>${fmtFecha(ex.fecha)}</td>
+        <td>${TIPO_LABEL[ex.tipo] || ex.tipo}</td>
+        <td>${detalleExcepcion(ex)}</td>
+        <td>${escapeHtml(ex.motivo || '—')}</td>
+        <td class="acciones-col">
+          <button class="chico peligro" data-borrar-excepcion="${ex.id}">Borrar</button>
+        </td>
+      </tr>`;
+}
+
+// Las excepciones creadas con "Cancelar entregas" comparten lote_id: se muestran como UNA fila
+// (con detalle desplegable) y se revierten juntas. Las cargadas de a una (lote_id NULL) se
+// muestran como siempre.
+function filaLote(loteId, items) {
+  const fechas = items.map((e) => e.fecha).sort();
+  const dias = new Set(fechas).size;
+  const zonasDelLote = [...new Set(items.map((e) => e.zona_nombre))];
+  const zonasActivas = zonasCache.filter((z) => z.activa);
+  const cubreTodas = zonasActivas.length > 1 && zonasActivas.every((z) => zonasDelLote.includes(z.nombre));
+  const etiquetaZonas = cubreTodas ? 'Todas las zonas' : zonasDelLote.join(', ');
+  const etiquetaFecha = dias === 1
+    ? fmtFecha(fechas[0])
+    : `${fmtFecha(fechas[0])} – ${fmtFecha(fechas[fechas.length - 1])} (${dias} días)`;
+  const motivo = items.find((e) => e.motivo)?.motivo;
+  const hijas = items
+    .slice()
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.zona_nombre.localeCompare(b.zona_nombre))
+    .map((e) => filaExcepcion(e, { hijaDeLote: loteId }))
+    .join('');
+  return `
+      <tr>
+        <td>${escapeHtml(etiquetaZonas)}</td>
+        <td>${items.length} ${items.length === 1 ? 'turno' : 'turnos'}</td>
+        <td>${etiquetaFecha}</td>
+        <td>${TIPO_LABEL.cancelado}</td>
+        <td>—</td>
+        <td>${escapeHtml(motivo || '—')}</td>
+        <td class="acciones-col">
+          <button class="chico" data-toggle-lote="${escapeHtml(loteId)}">Ver</button>
+          <button class="chico peligro" data-revertir-lote="${escapeHtml(loteId)}" data-cantidad="${items.length}">Revertir</button>
+        </td>
+      </tr>${hijas}`;
+}
+
 function renderExcepciones() {
   const tbody = document.getElementById('tbody-excepciones');
   if (excepcionesCache.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="vacio">No hay excepciones cargadas.</td></tr>';
     return;
   }
-  tbody.innerHTML = excepcionesCache
-    .map((ex) => {
-      let detalle = '—';
-      if (ex.tipo === 'capacidad_modificada') detalle = `Capacidad: ${ex.capacidad_maxima}`;
-      if (ex.tipo === 'horario_modificado') detalle = `${ex.hora_inicio}–${ex.hora_fin}`;
-      return `
-      <tr>
-        <td>${escapeHtml(ex.zona_nombre)}</td>
-        <td>${DIAS[ex.dia_semana]} ${ex.turno_hora_inicio}–${ex.turno_hora_fin}</td>
-        <td>${fmtFecha(ex.fecha)}</td>
-        <td>${TIPO_LABEL[ex.tipo] || ex.tipo}</td>
-        <td>${detalle}</td>
-        <td>${escapeHtml(ex.motivo || '—')}</td>
-        <td class="acciones-col">
-          <button class="chico peligro" data-borrar-excepcion="${ex.id}">Borrar</button>
-        </td>
-      </tr>`;
-    })
-    .join('');
+
+  // Agrupa respetando el orden de la lista (fecha descendente): cada lote aparece donde
+  // aparece su primera excepción.
+  const lotes = new Map();
+  excepcionesCache.forEach((ex) => {
+    if (ex.lote_id) {
+      if (!lotes.has(ex.lote_id)) lotes.set(ex.lote_id, []);
+      lotes.get(ex.lote_id).push(ex);
+    }
+  });
+  const yaMostrados = new Set();
+  const filas = [];
+  excepcionesCache.forEach((ex) => {
+    if (!ex.lote_id) {
+      filas.push(filaExcepcion(ex));
+    } else if (!yaMostrados.has(ex.lote_id)) {
+      yaMostrados.add(ex.lote_id);
+      filas.push(filaLote(ex.lote_id, lotes.get(ex.lote_id)));
+    }
+  });
+  tbody.innerHTML = filas.join('');
 
   tbody.querySelectorAll('[data-borrar-excepcion]').forEach((btn) =>
     btn.addEventListener('click', () => borrarExcepcion(Number(btn.dataset.borrarExcepcion)))
+  );
+  tbody.querySelectorAll('[data-toggle-lote]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const filasHijas = tbody.querySelectorAll(`[data-lote-hijo="${CSS.escape(btn.dataset.toggleLote)}"]`);
+      const mostrar = filasHijas.length && filasHijas[0].classList.contains('oculto');
+      filasHijas.forEach((tr) => tr.classList.toggle('oculto', !mostrar));
+      btn.textContent = mostrar ? 'Ocultar' : 'Ver';
+    })
+  );
+  tbody.querySelectorAll('[data-revertir-lote]').forEach((btn) =>
+    btn.addEventListener('click', () => revertirLote(btn.dataset.revertirLote, Number(btn.dataset.cantidad)))
   );
 }
 
@@ -390,6 +469,172 @@ async function borrarExcepcion(id) {
   } catch (e) {
     alert(`No se pudo borrar: ${e.message}`);
   }
+}
+
+// =========================================================
+// CANCELACIÓN MASIVA DE ENTREGAS
+// =========================================================
+let cancelacionPendiente = null; // body validado entre "Revisar" y "Confirmar"
+
+function abrirModalCancelacion() {
+  const activas = zonasCache.filter((z) => z.activa);
+  if (activas.length === 0) {
+    alert('No hay zonas activas.');
+    return;
+  }
+  document.getElementById('form-cancelacion').reset();
+  document.getElementById('modal-cancelacion-error').className = 'mensaje error oculto';
+  document.getElementById('modal-cancelacion-error-2').className = 'mensaje error oculto';
+  document.getElementById('c-zonas-lista').innerHTML = activas
+    .map(
+      (z) => `<label class="campo-check"><input type="checkbox" data-zona-id="${z.id}" checked> ${escapeHtml(z.nombre)}${z.es_retiro ? ' <span class="nota-inline">(retiro)</span>' : ''}</label>`
+    )
+    .join('');
+  document.getElementById('c-zona-todas').checked = true;
+  document.getElementById('c-zona-todas').indeterminate = false;
+  mostrarPasoCancelacion(1);
+  document.getElementById('modal-cancelacion-fondo').classList.remove('oculto');
+}
+
+function mostrarPasoCancelacion(paso) {
+  document.getElementById('form-cancelacion').classList.toggle('oculto', paso !== 1);
+  document.getElementById('c-paso-resumen').classList.toggle('oculto', paso !== 2);
+}
+
+function sincronizarTodasLasZonas() {
+  const checks = [...document.querySelectorAll('#c-zonas-lista input[type=checkbox]')];
+  const marcadas = checks.filter((cb) => cb.checked).length;
+  const todas = document.getElementById('c-zona-todas');
+  todas.checked = marcadas === checks.length;
+  todas.indeterminate = marcadas > 0 && marcadas < checks.length;
+}
+
+function volverACancelacion() {
+  mostrarPasoCancelacion(1);
+}
+
+// Paso 1 -> 2: pide al servidor una simulación (dry_run) y muestra qué se va a cancelar y
+// cuántos pedidos ya hechos hay en esos turnos, antes de tocar nada.
+async function revisarCancelacion(e) {
+  e.preventDefault();
+  const errorBox = document.getElementById('modal-cancelacion-error');
+  errorBox.className = 'mensaje error oculto';
+
+  const checks = [...document.querySelectorAll('#c-zonas-lista input[type=checkbox]')];
+  const elegidas = checks.filter((cb) => cb.checked).map((cb) => Number(cb.dataset.zonaId));
+  if (elegidas.length === 0) {
+    errorBox.textContent = 'Elegí al menos una zona.';
+    errorBox.className = 'mensaje error';
+    return;
+  }
+  const desde = document.getElementById('c-desde').value;
+  const hasta = document.getElementById('c-hasta').value;
+  if (hasta && hasta < desde) {
+    errorBox.textContent = 'La fecha "hasta" no puede ser anterior a "desde".';
+    errorBox.className = 'mensaje error';
+    return;
+  }
+
+  cancelacionPendiente = {
+    fecha_desde: desde,
+    fecha_hasta: hasta || null,
+    zona_ids: elegidas.length === checks.length ? null : elegidas, // null = todas
+    motivo: document.getElementById('c-motivo').value.trim() || null,
+  };
+
+  const boton = e.submitter;
+  if (boton) boton.disabled = true;
+  try {
+    const r = await api.post('/api/turnos-excepciones/lote', { ...cancelacionPendiente, dry_run: true });
+    renderResumenCancelacion(r);
+    document.getElementById('modal-cancelacion-error-2').className = 'mensaje error oculto';
+    mostrarPasoCancelacion(2);
+  } catch (e2) {
+    errorBox.textContent = e2.message;
+    errorBox.className = 'mensaje error';
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+
+function renderResumenCancelacion(r) {
+  const { fecha_desde: desde, fecha_hasta: hasta } = cancelacionPendiente;
+  const cuando = hasta && hasta !== desde ? `${fmtFecha(desde)} al ${fmtFecha(hasta)}` : fmtFecha(desde);
+  const partes = [];
+
+  if (r.turnos_a_cancelar === 0) {
+    partes.push(`<div class="mensaje">Todos esos turnos ya estaban cancelados (${cuando}). No hay nada para hacer.</div>`);
+  } else {
+    partes.push(
+      `<div class="mensaje"><strong>Se van a cancelar ${r.turnos_a_cancelar} ${r.turnos_a_cancelar === 1 ? 'turno' : 'turnos'}</strong>` +
+      ` — ${escapeHtml(r.zonas.join(', '))} — ${cuando}.</div>`
+    );
+  }
+  if (r.ya_canceladas > 0 && r.turnos_a_cancelar > 0) {
+    partes.push(`<p class="campo-ayuda">${r.ya_canceladas} ya estaban cancelados y no se tocan.</p>`);
+  }
+  if (r.reemplazadas > 0) {
+    partes.push(`<p class="campo-ayuda">${r.reemplazadas} excepción(es) de capacidad u horario de esos turnos se reemplazan por la cancelación.</p>`);
+  }
+
+  if (r.pedidos_afectados > 0) {
+    const items = r.pedidos
+      .map(
+        (p) => `<li>#${p.id} — ${fmtFecha(p.fecha)} · ${escapeHtml(p.zona || '—')} ${escapeHtml(p.horario || '')} · ${escapeHtml(p.estado)} · ${p.pagado ? 'pagado' : 'sin pagar'}</li>`
+      )
+      .join('');
+    const resto = r.pedidos_afectados > r.pedidos.length ? `<li>…y ${r.pedidos_afectados - r.pedidos.length} más</li>` : '';
+    partes.push(
+      `<div class="mensaje error">Ya hay <strong>${r.pedidos_afectados}</strong> ${r.pedidos_afectados === 1 ? 'pedido hecho' : 'pedidos hechos'} para esos turnos` +
+      ` (${r.pedidos_pagados} ${r.pedidos_pagados === 1 ? 'pagado' : 'pagados'}). Siguen como están: la cancelación solo bloquea pedidos nuevos. Conviene avisarles.` +
+      `<details style="margin-top:8px"><summary>Ver pedidos</summary><ul style="margin:8px 0 0 18px;padding:0">${items}${resto}</ul></details></div>`
+    );
+  } else {
+    partes.push('<p class="campo-ayuda">No hay pedidos hechos en esos turnos.</p>');
+  }
+
+  document.getElementById('c-resumen').innerHTML = partes.join('');
+  document.getElementById('c-confirmar').disabled = r.turnos_a_cancelar === 0;
+}
+
+async function confirmarCancelacion() {
+  if (!cancelacionPendiente) return;
+  const errorBox = document.getElementById('modal-cancelacion-error-2');
+  errorBox.className = 'mensaje error oculto';
+  const boton = document.getElementById('c-confirmar');
+  boton.disabled = true;
+  try {
+    const r = await api.post('/api/turnos-excepciones/lote', { ...cancelacionPendiente, dry_run: false });
+    cancelacionPendiente = null;
+    cerrarModal('modal-cancelacion-fondo');
+    await cargarExcepciones();
+    avisoGlobal(`Se cancelaron ${r.turnos_a_cancelar} ${r.turnos_a_cancelar === 1 ? 'turno' : 'turnos'}. Podés revertirlo desde la fila de la lista.`);
+  } catch (e) {
+    errorBox.textContent = e.message;
+    errorBox.className = 'mensaje error';
+    boton.disabled = false;
+  }
+}
+
+async function revertirLote(loteId, cantidad) {
+  if (!confirm(`¿Revertir esta cancelación? Se vuelven a ofrecer ${cantidad} ${cantidad === 1 ? 'turno' : 'turnos'} para pedidos nuevos.`)) return;
+  try {
+    const r = await api.del(`/api/turnos-excepciones/lote?lote_id=${encodeURIComponent(loteId)}`);
+    await cargarExcepciones();
+    avisoGlobal(`Se revirtió la cancelación (${r.eliminadas} ${r.eliminadas === 1 ? 'turno' : 'turnos'} habilitados de nuevo).`);
+  } catch (e) {
+    alert(`No se pudo revertir: ${e.message}`);
+  }
+}
+
+let avisoTimer = null;
+function avisoGlobal(texto) {
+  const box = document.getElementById('estado-global');
+  if (!box) return;
+  box.textContent = texto;
+  box.className = 'mensaje ok';
+  clearTimeout(avisoTimer);
+  avisoTimer = setTimeout(() => (box.className = 'mensaje oculto'), 8000);
 }
 
 // =========================================================

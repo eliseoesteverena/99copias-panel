@@ -103,15 +103,18 @@
       <button class="chico primario" id="btn-nueva-regla">+ Nueva regla</button>
     </div>
     <p class="seccion-nota">
-      Tiempo mínimo de anticipación (horas corridas) según la cantidad total de
-      carillas del pedido, por categoría.
+      Tiempo mínimo de anticipación (horas corridas). Una regla de <strong>categoría</strong>
+      se mide sobre el total de carillas del pedido. Una regla de <strong>producto</strong>
+      se mide sobre la cantidad total de ese producto en el pedido (carillas si es una
+      impresión, copias si es un acabado). Si el pedido activa varias reglas, rige la que
+      pide más horas.
     </p>
     <div class="tabla-wrap">
       <table>
       <thead>
-        <tr><th>Categoría</th><th>Carillas desde</th><th>Carillas hasta</th><th>Horas mínimas</th><th>Estado</th><th></th></tr>
+        <tr><th>Categoría</th><th>Aplica a</th><th>Desde</th><th>Hasta</th><th>Horas mínimas</th><th>Estado</th><th></th></tr>
       </thead>
-      <tbody id="tbody-reglas"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
+      <tbody id="tbody-reglas"><tr><td colspan="7" class="cargando">Cargando…</td></tr></tbody>
     </table>
     </div>
   </section>
@@ -216,13 +219,20 @@
         <label for="r-categoria">Categoría</label>
         <select id="r-categoria" required></select>
       </div>
+      <div class="campo">
+        <label for="r-producto">Aplica a</label>
+        <select id="r-producto">
+          <option value="">— Toda la categoría —</option>
+        </select>
+        <p class="campo-ayuda" id="r-ayuda-medida"></p>
+      </div>
       <div class="campo campo-doble">
         <div>
-          <label for="r-desde">Carillas desde</label>
+          <label for="r-desde">Cantidad desde</label>
           <input type="number" id="r-desde" min="0" required>
         </div>
         <div>
-          <label for="r-hasta">Carillas hasta (vacío = sin techo)</label>
+          <label for="r-hasta">Cantidad hasta (vacío = sin techo)</label>
           <input type="number" id="r-hasta" min="0">
         </div>
       </div>

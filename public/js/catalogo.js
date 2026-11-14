@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- reglas de producción ---
   document.getElementById('btn-nueva-regla').addEventListener('click', () => abrirModalRegla(null));
   document.getElementById('form-regla').addEventListener('submit', guardarRegla);
+  document.getElementById('r-categoria').addEventListener('change', () => {
+    poblarSelectProductoDeRegla(Number(document.getElementById('r-categoria').value), '');
+  });
+  document.getElementById('r-producto').addEventListener('change', actualizarAyudaMedidaRegla);
 
   // cierre genérico de modales
   document.querySelectorAll('[data-cerrar]').forEach((btn) => {
@@ -285,20 +289,20 @@ async function borrarProducto(id) {
 // =========================================================
 async function cargarReglas() {
   const tbody = document.getElementById('tbody-reglas');
-  tbody.innerHTML = '<tr><td colspan="6" class="cargando">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="cargando">Cargando…</td></tr>';
   try {
     const data = await api.get('/api/reglas-produccion');
     reglasCache = (data && data.reglas) || [];
     renderReglas();
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="mensaje error">Error: ${e.message}</div></td></tr>`;
   }
 }
 
 function renderReglas() {
   const tbody = document.getElementById('tbody-reglas');
   if (reglasCache.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="vacio">No hay reglas de producción cargadas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="vacio">No hay reglas de producción cargadas.</td></tr>';
     return;
   }
   tbody.innerHTML = reglasCache
@@ -306,6 +310,9 @@ function renderReglas() {
       (r) => `
     <tr>
       <td>${escapeHtml(r.categoria_nombre)}</td>
+      <td>${r.producto_id
+        ? `${escapeHtml(r.producto_descripcion)} <span class="nota-inline">(${escapeHtml(r.producto_unidad || 'unid.')})</span>`
+        : '<span class="nota-inline">Toda la categoría</span>'}</td>
       <td class="num">${r.carillas_desde}</td>
       <td class="num">${r.carillas_hasta ?? 'Sin techo'}</td>
       <td class="num">${r.horas_minimas}hs</td>
@@ -326,6 +333,35 @@ function renderReglas() {
   );
 }
 
+// Productos que pueden tener regla dentro de una categoría: los de esa categoría + los
+// transversales (acabados). Mismo criterio que valida el servidor.
+function poblarSelectProductoDeRegla(categoriaId, valorSeleccionado) {
+  const candidatos = productosCache
+    .filter((p) => p.categoria_id === null || p.categoria_id === undefined || Number(p.categoria_id) === categoriaId)
+    .sort((a, b) => a.descripcion.localeCompare(b.descripcion));
+  document.getElementById('r-producto').innerHTML =
+    '<option value="">— Toda la categoría —</option>' +
+    candidatos
+      .map((p) => `<option value="${p.id}">${escapeHtml(p.descripcion)} (${escapeHtml(p.unidad_medida || 'unid.')})</option>`)
+      .join('');
+  document.getElementById('r-producto').value = valorSeleccionado;
+  actualizarAyudaMedidaRegla();
+}
+
+function actualizarAyudaMedidaRegla() {
+  const id = document.getElementById('r-producto').value;
+  const ayuda = document.getElementById('r-ayuda-medida');
+  if (!id) {
+    ayuda.textContent = 'Se mide sobre el total de carillas del pedido.';
+    return;
+  }
+  const p = productosCache.find((x) => String(x.id) === id);
+  ayuda.textContent =
+    `Se mide sobre la cantidad total de "${p ? p.descripcion : 'este producto'}" en el pedido` +
+    (p && p.unidad_medida ? ` (en ${p.unidad_medida}).` : '.') +
+    ' Si otra regla del pedido pide más horas, rige esa.';
+}
+
 function abrirModalRegla(id) {
   if (categoriasCache.length === 0) {
     alert('Primero tenés que crear al menos una categoría.');
@@ -336,6 +372,10 @@ function abrirModalRegla(id) {
   document.getElementById('modal-regla-error').className = 'mensaje error oculto';
   document.getElementById('r-id').value = regla ? regla.id : '';
   document.getElementById('r-categoria').value = regla ? regla.categoria_id : categoriasCache[0].id;
+  poblarSelectProductoDeRegla(
+    Number(document.getElementById('r-categoria').value),
+    regla && regla.producto_id ? String(regla.producto_id) : ''
+  );
   document.getElementById('r-desde').value = regla ? regla.carillas_desde : '0';
   document.getElementById('r-hasta').value = regla && regla.carillas_hasta !== null ? regla.carillas_hasta : '';
   document.getElementById('r-horas').value = regla ? regla.horas_minimas : '0';
@@ -349,6 +389,7 @@ async function guardarRegla(e) {
   const hastaRaw = document.getElementById('r-hasta').value;
   const body = {
     categoria_id: Number(document.getElementById('r-categoria').value),
+    producto_id: document.getElementById('r-producto').value === '' ? '' : Number(document.getElementById('r-producto').value),
     carillas_desde: Number(document.getElementById('r-desde').value),
     carillas_hasta: hastaRaw === '' ? '' : Number(hastaRaw),
     horas_minimas: Number(document.getElementById('r-horas').value),

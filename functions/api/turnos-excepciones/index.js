@@ -9,7 +9,8 @@ export async function onRequestGet({ request, env }) {
 
   let sql = `
     SELECT te.id, te.turno_entrega_id, te.fecha, te.tipo, te.capacidad_maxima,
-           te.hora_inicio, te.hora_fin, te.motivo, te.creado_en,
+           te.hora_inicio, te.hora_fin, te.motivo, te.creado_en, te.lote_id,
+           t.zona_id,
            t.dia_semana, t.hora_inicio as turno_hora_inicio, t.hora_fin as turno_hora_fin,
            z.nombre as zona_nombre
     FROM turnos_excepciones te

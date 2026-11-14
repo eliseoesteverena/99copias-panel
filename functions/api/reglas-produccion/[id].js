@@ -1,4 +1,5 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
+import { validarProductoDeRegla } from '../lib/reglas-produccion.js';
 
 // PUT /api/reglas-produccion/:id
 export async function onRequestPut({ params, request, env }) {
@@ -21,6 +22,14 @@ export async function onRequestPut({ params, request, env }) {
         : Number(body.carillas_hasta);
   const horasMinimas =
     body.horas_minimas === undefined ? actual.horas_minimas : Number(body.horas_minimas);
+  // producto_id: undefined = no tocar; ''/null = pasa a ser regla de categoría.
+  const productoId =
+    body.producto_id === undefined
+      ? actual.producto_id
+      : body.producto_id === '' || body.producto_id === null
+        ? null
+        : Number(body.producto_id);
+  const categoriaId = body.categoria_id ?? actual.categoria_id;
 
   if (!Number.isInteger(carillasDesde) || carillasDesde < 0) {
     return errorJson('carillas_desde debe ser un entero mayor o igual a 0', 400);
@@ -31,6 +40,9 @@ export async function onRequestPut({ params, request, env }) {
   if (!Number.isInteger(horasMinimas) || horasMinimas < 0) {
     return errorJson('horas_minimas debe ser un entero mayor o igual a 0', 400);
   }
+  if (productoId !== null && !Number.isInteger(productoId)) {
+    return errorJson('producto_id inválido', 400);
+  }
 
   try {
     if (body.categoria_id && Number(body.categoria_id) !== actual.categoria_id) {
@@ -40,13 +52,21 @@ export async function onRequestPut({ params, request, env }) {
       if (!categoria) return errorJson('La categoría indicada no existe', 404);
     }
 
+    // Se revalida siempre que haya producto: cambiar la categoría puede dejar un producto
+    // que ya no corresponde.
+    if (productoId !== null) {
+      const errProducto = await validarProductoDeRegla(env.DB, productoId, categoriaId);
+      if (errProducto) return errorJson(errProducto, 400);
+    }
+
     await env.DB.prepare(
       `UPDATE reglas_produccion
-       SET categoria_id = ?, carillas_desde = ?, carillas_hasta = ?, horas_minimas = ?, activa = ?
+       SET categoria_id = ?, producto_id = ?, carillas_desde = ?, carillas_hasta = ?, horas_minimas = ?, activa = ?
        WHERE id = ?`
     )
       .bind(
-        body.categoria_id ?? actual.categoria_id,
+        categoriaId,
+        productoId,
         carillasDesde,
         carillasHasta,
         horasMinimas,
