@@ -1,0 +1,291 @@
+/* ==========================================================================
+   Página "Zonas, turnos y excepciones de entrega" — estilos propios.
+   Se carga DESPUÉS de style.css y solo en turnos.html; usa los mismos tokens
+   (--paper, --line, --accent…) para no desentonar. No toca style.css.
+   ========================================================================== */
+
+/* ---------- Pestañas ---------- */
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+  margin: var(--sp-4) 0 var(--sp-5);
+  overflow-x: auto;
+}
+
+.tabs button.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  color: var(--ink-500);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tabs button.tab:hover {
+  background: none;
+  color: var(--ink-900);
+  border-color: transparent;
+  border-bottom-color: var(--line-strong);
+}
+
+.tabs button.tab.activo {
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent);
+}
+
+.tab-badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  border-radius: 9px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ---------- Zonas como tarjetas plegables ---------- */
+.zonas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.zona-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.zona-card.abierta {
+  border-color: var(--line-strong);
+}
+
+.zona-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.zona-head:hover,
+.zona-head:focus-visible {
+  background: var(--paper);
+  outline: none;
+}
+
+.zona-card.zona-inactiva .zona-info {
+  opacity: 0.6;
+}
+
+.zona-chevron {
+  flex: none;
+  width: 14px;
+  color: var(--ink-500);
+  transition: transform 0.15s ease;
+}
+
+.zona-card.abierta .zona-chevron {
+  transform: rotate(90deg);
+}
+
+.zona-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.zona-titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: 14.5px;
+}
+
+.zona-resumen {
+  margin-top: 2px;
+  color: var(--ink-700);
+  font-size: 13px;
+}
+
+.zona-resumen.zona-sin-turnos {
+  color: var(--ink-500);
+  font-style: italic;
+}
+
+.zona-acciones {
+  display: flex;
+  gap: var(--sp-2);
+  flex: none;
+}
+
+.zona-cuerpo {
+  border-top: 1px solid var(--line);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: var(--paper);
+}
+
+.zona-cuerpo-vacio {
+  color: var(--ink-500);
+  font-size: 13px;
+  margin: 0 0 var(--sp-3);
+}
+
+.zona-pie {
+  margin-top: var(--sp-3);
+}
+
+.zonas-leyenda {
+  margin: var(--sp-4) 0 0;
+}
+
+/* ---------- Grilla semanal de una zona ---------- */
+.matriz-wrap {
+  overflow-x: auto;
+}
+
+table.matriz {
+  width: auto;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+}
+
+table.matriz th,
+table.matriz td {
+  padding: 0 4px;
+  border: none;
+  background: none;
+  text-align: center;
+}
+
+table.matriz thead th {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-500);
+  text-transform: uppercase;
+}
+
+table.matriz th.matriz-slot {
+  padding-right: var(--sp-4);
+  text-align: left;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-700);
+  text-transform: none;
+}
+
+button.celda {
+  min-width: 52px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+button.celda-on {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+button.celda-on:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+button.celda-off {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-500);
+  text-decoration: line-through;
+}
+
+button.celda-add {
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-300);
+}
+
+button.celda-add:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Listas de checkboxes en modales (zonas) ----------
+   Con ~10 zonas una columna alta empuja los botones fuera de pantalla: van en dos columnas. */
+.lista-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px var(--sp-3);
+  padding-left: 22px;
+}
+
+/* ---------- Barra de filtros de la pestaña Excepciones ---------- */
+.seccion-header-acciones select {
+  width: auto;
+  min-width: 190px;
+}
+
+.seccion-header-acciones .campo-check {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* ---------- Varios ---------- */
+.modal-acciones-izq {
+  display: flex;
+  gap: var(--sp-2);
+  margin-right: auto;
+}
+
+@media (max-width: 720px) {
+  .tabs button.tab {
+    padding: 10px 8px;
+    font-size: 14px;
+  }
+  /* la grilla semanal tiene que entrar en ~330px sin scroll horizontal (Lun–Vie) */
+  table.matriz th.matriz-slot {
+    padding-right: var(--sp-2);
+    font-size: 12px;
+  }
+  table.matriz th,
+  table.matriz td {
+    padding: 0 2px;
+  }
+  button.celda {
+    min-width: 40px;
+    padding: 6px 4px;
+  }
+  .seccion-header-acciones select {
+    flex: 1;
+    min-width: 0;
+  }
+  .zona-head {
+    flex-wrap: wrap;
+  }
+  .zona-acciones {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .zona-cuerpo {
+    padding: var(--sp-3);
+  }
+  .modal-acciones-izq {
+    width: 100%;
+    margin-bottom: var(--sp-2);
+  }
+}

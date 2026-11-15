@@ -8,6 +8,7 @@
 <script src="/auth.config.js"></script>
 <script src="/js/auth.js"></script>
 <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/turnos.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2453d9">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -54,52 +55,48 @@
 
   <div id="estado-global" class="mensaje oculto"></div>
 
-  <!-- ===================== ZONAS ===================== -->
-  <section class="seccion">
-    <div class="seccion-header">
-      <h2>Zonas</h2>
-      <button class="chico primario" id="btn-nueva-zona">+ Nueva zona</button>
-    </div>
-    <div class="tabla-wrap">
-      <table>
-      <thead><tr><th>Nombre</th><th class="num">Precio envío</th><th>Retiro en local</th><th>Estado</th><th></th></tr></thead>
-      <tbody id="tbody-zonas"><tr><td colspan="5" class="cargando">Cargando…</td></tr></tbody>
-    </table>
-    </div>
-  </section>
+  <!-- Pestañas: una sola sección visible a la vez, para no tener una página interminable -->
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab activo" role="tab" data-tab="zonas">Zonas y turnos</button>
+    <button type="button" class="tab" role="tab" data-tab="excepciones">Excepciones <span class="tab-badge oculto" id="badge-excepciones"></span></button>
+    <button type="button" class="tab" role="tab" data-tab="descuentos" title="Descuentos de envío">Descuentos</button>
+  </div>
 
-  <!-- ===================== TURNOS RECURRENTES ===================== -->
-  <section class="seccion">
+  <!-- ===================== ZONAS Y TURNOS ===================== -->
+  <section class="seccion" data-panel="zonas">
     <div class="seccion-header">
-      <h2>Turnos recurrentes</h2>
       <div class="seccion-header-acciones">
-        <select id="filtro-zona-turnos"><option value="">Todas las zonas</option></select>
-        <button class="chico primario" id="btn-nuevo-turno">+ Nuevo turno</button>
+        <button class="chico" id="btn-expandir-zonas">Expandir todo</button>
+        <button class="chico" id="btn-contraer-zonas">Contraer todo</button>
+      </div>
+      <div class="seccion-header-acciones">
+        <button class="chico primario" id="btn-nuevo-turno">+ Turnos</button>
+        <button class="chico" id="btn-nueva-zona">+ Nueva zona</button>
       </div>
     </div>
-    <div class="tabla-wrap">
-      <table>
-      <thead>
-        <tr><th>Zona</th><th>Día</th><th>Horario</th><th>Capacidad</th><th>Estado</th><th></th></tr>
-      </thead>
-      <tbody id="tbody-turnos"><tr><td colspan="6" class="cargando">Cargando…</td></tr></tbody>
-    </table>
-    </div>
+    <div id="lista-zonas" class="zonas-lista"><div class="cargando">Cargando…</div></div>
+    <p class="seccion-nota zonas-leyenda">
+      Abrí una zona para ver su semana. Click en un turno para editarlo, en <strong>+</strong> para
+      agregarlo. El número es la capacidad (∞ = sin límite); en gris, turnos inactivos.
+    </p>
   </section>
 
   <!-- ===================== EXCEPCIONES ===================== -->
-  <section class="seccion">
+  <section class="seccion oculto" data-panel="excepciones">
     <div class="seccion-header">
-      <h2>Excepciones puntuales</h2>
+      <div class="seccion-header-acciones">
+        <select id="filtro-zona-excepciones"><option value="">Todas las zonas</option></select>
+        <label class="campo-check"><input type="checkbox" id="exc-ver-pasadas"> Ver pasadas</label>
+      </div>
       <div class="seccion-header-acciones">
         <button class="chico primario" id="btn-cancelar-fechas">Cancelar entregas…</button>
-        <button class="chico" id="btn-nueva-excepcion">+ Nueva excepción</button>
+        <button class="chico" id="btn-nueva-excepcion">+ Excepción puntual</button>
       </div>
     </div>
     <p class="seccion-nota">
-      <strong>Cancelar entregas</strong> cierra una fecha (o un rango) para varias zonas de un
-      saque, y queda agrupada en una sola fila que se puede revertir con un click.
-      <strong>Nueva excepción</strong> sirve para cambiar capacidad u horario de un turno puntual.
+      <strong>Cancelar entregas</strong> cierra una fecha (o un rango) para varias zonas de un saque y
+      queda agrupada en una fila que se revierte con un click. <strong>Excepción puntual</strong> cambia
+      capacidad u horario de un turno en una fecha. Se muestran solo las próximas.
     </p>
     <div class="tabla-wrap">
       <table>
@@ -112,7 +109,7 @@
   </section>
 
   <!-- ===================== DESCUENTOS DE ENVÍO ===================== -->
-  <section class="seccion">
+  <section class="seccion oculto" data-panel="descuentos">
     <div class="seccion-header">
       <h2>Descuentos de envío</h2>
       <button class="chico primario" id="btn-nuevo-descuento">+ Nuevo descuento</button>
@@ -177,7 +174,7 @@
         <div class="campo">
           <label>Zonas</label>
           <label class="campo-check"><input type="checkbox" id="t-zona-todas"> <strong>Todas las zonas</strong></label>
-          <div id="t-zonas-lista" style="padding-left:22px"></div>
+          <div id="t-zonas-lista" class="lista-checks"></div>
         </div>
         <div class="campo">
           <label>Días de la semana</label>
@@ -229,6 +226,10 @@
       <p class="campo-ayuda oculto" id="t-resumen"></p>
       <div id="modal-turno-error" class="mensaje error oculto"></div>
       <div class="modal-acciones">
+        <span class="modal-acciones-izq oculto" id="t-acciones-edicion">
+          <button type="button" class="peligro" id="t-borrar">Borrar</button>
+          <button type="button" id="t-excepcion" title="Cancelar o cambiar este turno solo en una fecha puntual">Excepción…</button>
+        </span>
         <button type="button" data-cerrar="modal-turno-fondo">Cancelar</button>
         <button type="submit" class="primario" id="t-guardar">Guardar</button>
       </div>
@@ -255,7 +256,7 @@
       <div class="campo">
         <label>Zonas</label>
         <label class="campo-check"><input type="checkbox" id="c-zona-todas" checked> <strong>Todas las zonas</strong></label>
-        <div id="c-zonas-lista" style="padding-left:22px"></div>
+        <div id="c-zonas-lista" class="lista-checks"></div>
       </div>
       <div class="campo">
         <label for="c-motivo">Motivo (opcional)</label>
@@ -282,11 +283,17 @@
 <!-- ===================== MODAL EXCEPCIÓN ===================== -->
 <div class="modal-fondo oculto" id="modal-excepcion-fondo">
   <div class="modal">
-    <h2>Nueva excepción</h2>
+    <h2>Excepción puntual</h2>
     <form id="form-excepcion">
-      <div class="campo">
-        <label for="e-turno">Turno</label>
-        <select id="e-turno" required></select>
+      <div class="campo campo-doble">
+        <div>
+          <label for="e-zona">Zona</label>
+          <select id="e-zona" required></select>
+        </div>
+        <div>
+          <label for="e-turno">Turno</label>
+          <select id="e-turno" required></select>
+        </div>
       </div>
       <div class="campo">
         <label for="e-fecha">Fecha</label>
