@@ -10,10 +10,22 @@
   gap: var(--sp-1);
   border-bottom: 1px solid var(--line);
   margin: var(--sp-4) 0 var(--sp-5);
+  /* Si algún día no entran, se desplazan de costado — pero sin barras de scroll ni
+     scroll vertical (overflow-x:auto solo fuerza overflow-y:auto si no se lo pisa). */
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .tabs button.tab {
+  flex: none;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -50,6 +62,19 @@
   text-align: center;
 }
 
+/* ---------- Aviso flotante (siempre visible, sin importar cuánto se scrolleó) ---------- */
+#estado-global {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-5);
+  transform: translateX(-50%);
+  z-index: 60;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  box-shadow: var(--shadow-md);
+}
+
 /* ---------- Zonas como tarjetas plegables ---------- */
 .zonas-lista {
   display: flex;
@@ -70,7 +95,7 @@
 
 .zona-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
   cursor: pointer;
@@ -90,6 +115,7 @@
 .zona-chevron {
   flex: none;
   width: 14px;
+  margin-top: 3px;
   color: var(--ink-500);
   transition: transform 0.15s ease;
 }
@@ -107,12 +133,18 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: 2px var(--sp-2);
   font-size: 14.5px;
 }
 
+.zona-meta {
+  color: var(--ink-500);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
 .zona-resumen {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--ink-700);
   font-size: 13px;
 }
@@ -120,12 +152,6 @@
 .zona-resumen.zona-sin-turnos {
   color: var(--ink-500);
   font-style: italic;
-}
-
-.zona-acciones {
-  display: flex;
-  gap: var(--sp-2);
-  flex: none;
 }
 
 .zona-cuerpo {
@@ -140,8 +166,27 @@
   margin: 0 0 var(--sp-3);
 }
 
+/* Pie de la zona: agregar horario a la izquierda; editar/borrar zona a la derecha */
 .zona-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
   margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line);
+}
+
+.zona-cuerpo-vacio + .zona-pie {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.zona-pie-der {
+  display: flex;
+  gap: var(--sp-2);
 }
 
 .zonas-leyenda {
@@ -176,7 +221,7 @@ table.matriz thead th {
 }
 
 table.matriz th.matriz-slot {
-  padding-right: var(--sp-4);
+  padding-right: var(--sp-3);
   text-align: left;
   white-space: nowrap;
   font-family: var(--font-mono);
@@ -225,6 +270,21 @@ button.celda-add:hover {
   color: var(--accent);
 }
 
+/* ✕ al final de cada fila: quita ese horario de todos los días */
+button.celda-quitar {
+  padding: 4px 7px;
+  border: none;
+  background: transparent;
+  color: var(--ink-300);
+  font-size: 12px;
+  line-height: 1;
+}
+
+button.celda-quitar:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 /* ---------- Listas de checkboxes en modales (zonas) ----------
    Con ~10 zonas una columna alta empuja los botones fuera de pantalla: van en dos columnas. */
 .lista-checks {
@@ -234,7 +294,7 @@ button.celda-add:hover {
   padding-left: 22px;
 }
 
-/* ---------- Barra de filtros de la pestaña Excepciones ---------- */
+/* ---------- Barra de acciones de cada pestaña ---------- */
 .seccion-header-acciones select {
   width: auto;
   min-width: 190px;
@@ -245,47 +305,168 @@ button.celda-add:hover {
   white-space: nowrap;
 }
 
-/* ---------- Varios ---------- */
+#modal-turno-fondo .modal-acciones {
+  flex-wrap: wrap;
+}
+
 .modal-acciones-izq {
   display: flex;
   gap: var(--sp-2);
   margin-right: auto;
 }
 
+/* ==========================================================================
+   Móvil
+   ========================================================================== */
 @media (max-width: 720px) {
-  .tabs button.tab {
-    padding: 10px 8px;
-    font-size: 14px;
+  .pagina > h1 {
+    font-size: 20px;
+    line-height: 1.25;
   }
-  /* la grilla semanal tiene que entrar en ~330px sin scroll horizontal (Lun–Vie) */
+
+  /* Los tres tabs tienen que entrar en ~330px sin scroll */
+  .tabs {
+    margin: var(--sp-3) 0 var(--sp-4);
+    gap: 0;
+  }
+  .tabs button.tab {
+    padding: 10px 7px;
+    font-size: 13.5px;
+  }
+  .tab-badge {
+    margin-left: 2px;
+    padding: 0 5px;
+  }
+
+  /* Barra de acciones: cada grupo en su fila y los botones reparten el ancho */
+  [data-panel="zonas"] .seccion-header,
+  [data-panel="excepciones"] .seccion-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+  }
+  [data-panel="zonas"] .seccion-header-acciones,
+  [data-panel="excepciones"] .seccion-header-acciones {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  [data-panel="zonas"] .seccion-header-acciones button,
+  [data-panel="excepciones"] .seccion-header-acciones button {
+    flex: 1;
+  }
+  .seccion-header-acciones select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  /* Zona: acciones de zona en su propia fila, a todo el ancho */
+  .zona-head {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+  }
+  .zona-cuerpo {
+    padding: var(--sp-3);
+  }
+  .zona-pie {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .zona-pie > button,
+  .zona-pie-der {
+    width: 100%;
+  }
+  .zona-pie-der button {
+    flex: 1;
+  }
+
+  /* La grilla semanal tiene que entrar en ~300px (Lun–Vie + ✕) sin scroll horizontal */
   table.matriz th.matriz-slot {
     padding-right: var(--sp-2);
     font-size: 12px;
   }
   table.matriz th,
   table.matriz td {
-    padding: 0 2px;
+    padding: 0 1px;
   }
   button.celda {
-    min-width: 40px;
+    min-width: 36px;
+    padding: 6px 2px;
+  }
+  button.celda-quitar {
     padding: 6px 4px;
   }
-  .seccion-header-acciones select {
-    flex: 1;
-    min-width: 0;
-  }
-  .zona-head {
-    flex-wrap: wrap;
-  }
-  .zona-acciones {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .zona-cuerpo {
-    padding: var(--sp-3);
-  }
+
+  /* Eliminar / Excepción… en su propia fila; Cancelar y Guardar abajo, repartiendo el ancho */
   .modal-acciones-izq {
+    flex: 1 1 100%;
+    margin-right: 0;
+  }
+  .modal-acciones-izq button {
+    flex: 1;
+  }
+  #modal-turno-fondo .modal-acciones > button {
+    flex: 1;
+  }
+
+  /* El aviso queda por encima de la barra de navegación inferior */
+  #estado-global {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Excepciones: cada fila se vuelve una tarjeta en vez de una tabla de 7 columnas */
+  table.tabla-cards,
+  table.tabla-cards tbody {
+    display: block;
     width: 100%;
-    margin-bottom: var(--sp-2);
+  }
+  table.tabla-cards thead {
+    display: none;
+  }
+  table.tabla-cards tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 2px var(--sp-3);
+    padding: var(--sp-3) 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.tabla-cards td {
+    display: block;
+    padding: 0;
+    border: none;
+    min-width: 0;
+    font-size: 13.5px;
+    overflow-wrap: anywhere;
+  }
+  table.tabla-cards td:nth-child(1) {
+    grid-column: 1 / 3;
+    grid-row: 1;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+  table.tabla-cards td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  table.tabla-cards td:nth-child(3) { grid-column: 2; grid-row: 2; }
+  table.tabla-cards td:nth-child(4) { grid-column: 1 / 3; grid-row: 3; }
+  table.tabla-cards td:nth-child(5) { grid-column: 1 / 3; grid-row: 4; }
+  table.tabla-cards td:nth-child(6) { grid-column: 1 / 3; grid-row: 5; color: var(--ink-700); }
+  table.tabla-cards td:nth-child(7) {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    align-items: stretch;
+  }
+  table.tabla-cards td[data-vacio] {
+    display: none;
+  }
+  table.tabla-cards td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--ink-500);
+  }
+  table.tabla-cards td.vacio,
+  table.tabla-cards td.cargando {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    display: block;
   }
 }
