@@ -1,4 +1,5 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
+import { resumenEliminacion, eliminarTurnos } from '../lib/turnos-eliminar.js';
 
 // PUT /api/turnos/:id
 export async function onRequestPut({ params, request, env }) {
@@ -49,39 +50,14 @@ export async function onRequestPut({ params, request, env }) {
 
 // DELETE /api/turnos/:id -> si tiene pedidos o excepciones asociadas, se
 // desactiva en vez de borrarse.
+// DELETE /api/turnos/:id -> elimina el turno (baja lógica si tiene pedidos; ver lib/turnos-eliminar.js)
 export async function onRequestDelete({ params, env }) {
-  const id = params.id;
+  const id = Number(params.id);
   try {
-    const actual = await env.DB.prepare('SELECT id FROM turnos_entrega WHERE id = ?')
-      .bind(id)
-      .first();
-    if (!actual) return errorJson('Turno no encontrado', 404);
-
-    const tienePedidos = await env.DB.prepare(
-      'SELECT id FROM trabajos WHERE turno_entrega_id = ? LIMIT 1'
-    )
-      .bind(id)
-      .first();
-    const tieneExcepciones = await env.DB.prepare(
-      'SELECT id FROM turnos_excepciones WHERE turno_entrega_id = ? LIMIT 1'
-    )
-      .bind(id)
-      .first();
-
-    if (tienePedidos || tieneExcepciones) {
-      await env.DB.prepare('UPDATE turnos_entrega SET activo = 0 WHERE id = ?')
-        .bind(id)
-        .run();
-      return json({
-        ok: true,
-        id: Number(id),
-        accion: 'desactivado',
-        motivo: 'El turno tiene pedidos y/o excepciones asociadas; se desactivó en vez de borrarlo.',
-      });
-    }
-
-    await env.DB.prepare('DELETE FROM turnos_entrega WHERE id = ?').bind(id).run();
-    return json({ ok: true, id: Number(id), accion: 'eliminado' });
+    const r = await resumenEliminacion(env.DB, [id]);
+    if (!r.turnos) return errorJson('Turno no encontrado', 404);
+    await eliminarTurnos(env.DB, [id]);
+    return json({ ok: true, id, accion: 'eliminado', con_historial: r.con_historial > 0 });
   } catch (e) {
     return errorJson(`Error eliminando el turno: ${e.message}`, 500);
   }

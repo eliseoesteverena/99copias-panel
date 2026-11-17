@@ -25,11 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('lista-zonas').addEventListener('click', clickListaZonas);
   document.getElementById('lista-zonas').addEventListener('keydown', teclaListaZonas);
   document.getElementById('btn-expandir-zonas').addEventListener('click', () => {
-    zonasCache.forEach((z) => zonasAbiertas.add(z.id));
-    renderZonasYTurnos();
-  });
-  document.getElementById('btn-contraer-zonas').addEventListener('click', () => {
-    zonasAbiertas.clear();
+    const todasAbiertas = zonasCache.length > 0 && zonasCache.every((z) => zonasAbiertas.has(z.id));
+    if (todasAbiertas) zonasAbiertas.clear();
+    else zonasCache.forEach((z) => zonasAbiertas.add(z.id));
     renderZonasYTurnos();
   });
   document.getElementById('t-borrar').addEventListener('click', async () => {
@@ -199,18 +197,30 @@ function resumenHorario(turnosZona) {
   return [...porDias.values()].map((g) => `${formatearDias(g.dias)} ${unirLista(g.horarios)}`).join(' · ');
 }
 
+// Pie de cada zona: agregar horario a la izquierda; editar/borrar la zona a la derecha.
+function pieZona(zona, conTurnos) {
+  return `<div class="zona-pie">
+      <button class="chico${conTurnos ? '' : ' primario'}" data-agregar-horario="${zona.id}">+ Agregar horario</button>
+      <span class="zona-pie-der">
+        <button class="chico" data-editar-zona="${zona.id}">Editar zona</button>
+        <button class="chico peligro" data-borrar-zona="${zona.id}">Borrar zona</button>
+      </span>
+    </div>`;
+}
+
 // Grilla semanal de una zona: una fila por horario, una columna por día.
 // Lun–Vie siempre; Sáb y Dom solo si la zona tiene turnos esos días.
 function cuerpoZona(zona, turnosZona) {
   if (!turnosZona.length) {
-    return `<p class="zona-cuerpo-vacio">Esta zona todavía no tiene turnos.</p>
-      <div class="zona-pie"><button class="chico primario" data-agregar-horario="${zona.id}">+ Agregar horario</button></div>`;
+    return `<p class="zona-cuerpo-vacio">Esta zona todavía no tiene turnos.</p>${pieZona(zona, false)}`;
   }
   const horarios = new Map();
   turnosZona.forEach((t) => {
     const k = `${t.hora_inicio}|${t.hora_fin}`;
-    if (!horarios.has(k)) horarios.set(k, { ini: t.hora_inicio, fin: t.hora_fin, porDia: new Map() });
-    if (!horarios.get(k).porDia.has(t.dia_semana)) horarios.get(k).porDia.set(t.dia_semana, t);
+    if (!horarios.has(k)) horarios.set(k, { ini: t.hora_inicio, fin: t.hora_fin, porDia: new Map(), ids: [] });
+    const h = horarios.get(k);
+    h.ids.push(t.id);
+    if (!h.porDia.has(t.dia_semana)) h.porDia.set(t.dia_semana, t);
   });
   const filas = [...horarios.values()].sort((a, b) => a.ini.localeCompare(b.ini) || a.fin.localeCompare(b.fin));
   const usados = new Set(turnosZona.map((t) => t.dia_semana));
@@ -227,19 +237,30 @@ function cuerpoZona(zona, turnosZona) {
     return `<td><button type="button" class="celda celda-add" data-agregar="1" data-zona="${zona.id}" data-dia="${d}" data-ini="${h.ini}" data-fin="${h.fin}" title="${titulo}" aria-label="${titulo}">+</button></td>`;
   };
 
+  // Quita el horario entero (todos los días) de un click.
+  const quitar = (h) => {
+    const desc = `el horario ${horaCorta(h.ini)}–${horaCorta(h.fin)} de ${zona.nombre} (${formatearDias([...h.porDia.keys()])})`;
+    return `<td class="matriz-quitar"><button type="button" class="celda-quitar" data-quitar-horario="${h.ids.join(',')}" data-desc="${escapeHtml(desc)}" title="Quitar este horario de todos los días" aria-label="Quitar ${escapeHtml(desc)}">✕</button></td>`;
+  };
+
   return `<div class="matriz-wrap"><table class="matriz">
-      <thead><tr><th></th>${columnas.map((d) => `<th>${DIAS_CORTO[d]}</th>`).join('')}</tr></thead>
+      <thead><tr><th></th>${columnas.map((d) => `<th>${DIAS_CORTO[d]}</th>`).join('')}<th></th></tr></thead>
       <tbody>${filas
-        .map((h) => `<tr><th class="matriz-slot" scope="row">${h.ini}–${h.fin}</th>${columnas.map((d) => celda(h, d)).join('')}</tr>`)
+        .map(
+          (h) => `<tr><th class="matriz-slot" scope="row" title="${h.ini}–${h.fin}">${horaCorta(h.ini)}–${horaCorta(h.fin)}</th>${columnas.map((d) => celda(h, d)).join('')}${quitar(h)}</tr>`
+        )
         .join('')}</tbody>
     </table></div>
-    <div class="zona-pie"><button class="chico" data-agregar-horario="${zona.id}">+ Agregar horario</button></div>`;
+    ${pieZona(zona, true)}`;
 }
 
 function tarjetaZona(z) {
   const ts = turnosCache.filter((t) => t.zona_id === z.id);
   const abierta = zonasAbiertas.has(z.id);
   const resumen = resumenHorario(ts);
+  const meta = [z.es_retiro ? null : `${fmtMoneda(z.precio_envio)} de envío`, `${ts.length} ${ts.length === 1 ? 'turno' : 'turnos'}`]
+    .filter(Boolean)
+    .join(' · ');
   return `
     <div class="zona-card${abierta ? ' abierta' : ''}${z.activa ? '' : ' zona-inactiva'}" data-zona="${z.id}">
       <div class="zona-head" role="button" tabindex="0" aria-expanded="${abierta}" data-toggle-zona="${z.id}">
@@ -247,19 +268,21 @@ function tarjetaZona(z) {
         <div class="zona-info">
           <div class="zona-titulo">
             <strong>${escapeHtml(z.nombre)}</strong>
-            ${z.es_retiro ? '<span class="badge">Retiro</span>' : `<span class="nota-inline">${fmtMoneda(z.precio_envio)} de envío</span>`}
+            ${z.es_retiro ? '<span class="badge">Retiro</span>' : ''}
             ${z.activa ? '' : '<span class="badge badge-no-pagado">Inactiva</span>'}
-            <span class="nota-inline">· ${ts.length} ${ts.length === 1 ? 'turno' : 'turnos'}</span>
+            <span class="zona-meta">${meta}</span>
           </div>
           <div class="zona-resumen${ts.length ? '' : ' zona-sin-turnos'}">${escapeHtml(resumen || 'Sin turnos cargados')}</div>
-        </div>
-        <div class="zona-acciones">
-          <button class="chico" data-editar-zona="${z.id}">Editar</button>
-          <button class="chico peligro" data-borrar-zona="${z.id}">Borrar</button>
         </div>
       </div>
       <div class="zona-cuerpo${abierta ? '' : ' oculto'}">${cuerpoZona(z, ts)}</div>
     </div>`;
+}
+
+function actualizarBotonExpandir() {
+  const btn = document.getElementById('btn-expandir-zonas');
+  const todasAbiertas = zonasCache.length > 0 && zonasCache.every((z) => zonasAbiertas.has(z.id));
+  btn.textContent = todasAbiertas ? 'Contraer todo' : 'Expandir todo';
 }
 
 function renderZonasYTurnos() {
@@ -272,6 +295,7 @@ function renderZonasYTurnos() {
   // Las inactivas al final (el sort es estable: el resto conserva el orden de la API)
   const zonas = [...zonasCache].sort((a, b) => (b.activa ? 1 : 0) - (a.activa ? 1 : 0));
   cont.innerHTML = zonas.map(tarjetaZona).join('');
+  actualizarBotonExpandir();
 }
 
 function alternarZona(id) {
@@ -283,6 +307,7 @@ function alternarZona(id) {
   card.classList.toggle('abierta', abrir);
   card.querySelector('.zona-cuerpo').classList.toggle('oculto', !abrir);
   card.querySelector('.zona-head').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  actualizarBotonExpandir();
 }
 
 // Un solo listener para toda la lista (los botones se re-crean en cada render).
@@ -292,6 +317,8 @@ function clickListaZonas(e) {
   if (editarZona) return abrirModalZona(Number(editarZona.dataset.editarZona));
   const borrarZona_ = t.closest('[data-borrar-zona]');
   if (borrarZona_) return borrarZona(Number(borrarZona_.dataset.borrarZona));
+  const quitar = t.closest('[data-quitar-horario]');
+  if (quitar) return eliminarTurnos(quitar.dataset.quitarHorario.split(',').map(Number), quitar.dataset.desc);
   const turno = t.closest('[data-turno-id]');
   if (turno) return abrirModalTurno(Number(turno.dataset.turnoId));
   const agregar = t.closest('[data-agregar]');
@@ -587,18 +614,41 @@ async function guardarTurno(e) {
   }
 }
 
-// Devuelve true si el turno se borró (o desactivó); false si se canceló o falló.
-async function borrarTurno(id) {
-  if (!confirm('¿Borrar este turno? Si tiene pedidos o excepciones asociadas, se desactivará en vez de borrarse.')) return false;
+// Elimina turnos recurrentes (uno, o un horario entero). Primero pregunta al servidor qué
+// pasaría (dry_run) para avisar si hay pedidos futuros en esos turnos, después confirma.
+// Devuelve true si se eliminó; false si se canceló o falló.
+async function eliminarTurnos(ids, descripcion) {
   try {
-    await api.del(`/api/turnos/${id}`);
+    const previo = await api.post('/api/turnos/eliminar-lote', { ids, dry_run: true });
+    if (!previo.turnos) {
+      alert('Esos turnos ya no existen.');
+      await cargarTurnos();
+      return false;
+    }
+    let msg = `¿Eliminar ${descripcion}?`;
+    if (previo.pedidos_futuros > 0) {
+      msg +=
+        `\n\nOJO: hay ${previo.pedidos_futuros} ${previo.pedidos_futuros === 1 ? 'pedido futuro' : 'pedidos futuros'}` +
+        (previo.pedidos_pagados ? ` (${previo.pedidos_pagados} ${previo.pedidos_pagados === 1 ? 'pagado' : 'pagados'})` : '') +
+        ` en ${previo.turnos === 1 ? 'este turno' : 'estos turnos'}. No se modifican, pero ese horario deja de ofrecerse: conviene avisarles.`;
+    }
+    if (!confirm(msg)) return false;
+
+    const r = await api.post('/api/turnos/eliminar-lote', { ids });
     await cargarTurnos();
     await cargarExcepciones();
+    avisoGlobal(r.eliminados === 1 ? 'Se eliminó 1 turno.' : `Se eliminaron ${r.eliminados} turnos.`);
     return true;
   } catch (e) {
-    alert(`No se pudo borrar: ${e.message}`);
+    alert(`No se pudo eliminar: ${e.message}`);
     return false;
   }
+}
+
+async function borrarTurno(id) {
+  const t = turnosCache.find((x) => x.id === id);
+  const desc = t ? `el turno ${DIAS[t.dia_semana]} ${t.hora_inicio}–${t.hora_fin} de ${t.zona_nombre}` : 'este turno';
+  return eliminarTurnos([id], desc);
 }
 
 // =========================================================
@@ -638,8 +688,8 @@ function filaExcepcion(ex, { hijaDeLote = null } = {}) {
         <td>${DIAS[ex.dia_semana]} ${ex.turno_hora_inicio}–${ex.turno_hora_fin}</td>
         <td>${fmtFecha(ex.fecha)}</td>
         <td>${TIPO_LABEL[ex.tipo] || ex.tipo}</td>
-        <td>${detalleExcepcion(ex)}</td>
-        <td>${escapeHtml(ex.motivo || '—')}</td>
+        <td${detalleExcepcion(ex) === '—' ? ' data-vacio' : ''}>${detalleExcepcion(ex)}</td>
+        <td data-label="Motivo"${ex.motivo ? '' : ' data-vacio'}>${escapeHtml(ex.motivo || '—')}</td>
         <td class="acciones-col">
           <button class="chico peligro" data-borrar-excepcion="${ex.id}">Borrar</button>
         </td>
@@ -671,8 +721,8 @@ function filaLote(loteId, items) {
         <td>${items.length} ${items.length === 1 ? 'turno' : 'turnos'}</td>
         <td>${etiquetaFecha}</td>
         <td>${TIPO_LABEL.cancelado}</td>
-        <td>—</td>
-        <td>${escapeHtml(motivo || '—')}</td>
+        <td data-vacio>—</td>
+        <td data-label="Motivo"${motivo ? '' : ' data-vacio'}>${escapeHtml(motivo || '—')}</td>
         <td class="acciones-col">
           <button class="chico" data-toggle-lote="${escapeHtml(loteId)}">Ver</button>
           <button class="chico peligro" data-revertir-lote="${escapeHtml(loteId)}" data-cantidad="${items.length}">Revertir</button>

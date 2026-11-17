@@ -10,10 +10,11 @@ export async function onRequestGet({ request, env }) {
            te.capacidad_maxima, te.activo, z.nombre as zona_nombre
     FROM turnos_entrega te
     JOIN zonas z ON z.id = te.zona_id
+    WHERE te.eliminado = 0
   `;
   const params = [];
   if (zonaId) {
-    sql += ' WHERE te.zona_id = ?';
+    sql += ' AND te.zona_id = ?';
     params.push(zonaId);
   }
   sql += ' ORDER BY z.nombre, te.dia_semana, te.hora_inicio';

@@ -66,12 +66,11 @@
   <section class="seccion" data-panel="zonas">
     <div class="seccion-header">
       <div class="seccion-header-acciones">
-        <button class="chico" id="btn-expandir-zonas">Expandir todo</button>
-        <button class="chico" id="btn-contraer-zonas">Contraer todo</button>
-      </div>
-      <div class="seccion-header-acciones">
         <button class="chico primario" id="btn-nuevo-turno">+ Turnos</button>
         <button class="chico" id="btn-nueva-zona">+ Nueva zona</button>
+      </div>
+      <div class="seccion-header-acciones">
+        <button class="chico" id="btn-expandir-zonas">Expandir todo</button>
       </div>
     </div>
     <div id="lista-zonas" class="zonas-lista"><div class="cargando">Cargando…</div></div>
@@ -99,7 +98,7 @@
       capacidad u horario de un turno en una fecha. Se muestran solo las próximas.
     </p>
     <div class="tabla-wrap">
-      <table>
+      <table class="tabla-cards">
       <thead>
         <tr><th>Zona</th><th>Turno</th><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Motivo</th><th></th></tr>
       </thead>
@@ -227,7 +226,7 @@
       <div id="modal-turno-error" class="mensaje error oculto"></div>
       <div class="modal-acciones">
         <span class="modal-acciones-izq oculto" id="t-acciones-edicion">
-          <button type="button" class="peligro" id="t-borrar">Borrar</button>
+          <button type="button" class="peligro" id="t-borrar">Eliminar</button>
           <button type="button" id="t-excepcion" title="Cancelar o cambiar este turno solo en una fecha puntual">Excepción…</button>
         </span>
         <button type="button" data-cerrar="modal-turno-fondo">Cancelar</button>

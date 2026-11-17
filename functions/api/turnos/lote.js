@@ -7,7 +7,8 @@ import { json, errorJson, readJson } from '../lib/utils.js';
 //   body: { zona_ids: [..], dias_semana: [..], hora_inicio, hora_fin, capacidad_maxima?, activo? }
 //     - dias_semana: 0 (domingo) … 6 (sábado)
 //     - capacidad_maxima vacío/null = sin límite
-// Los turnos que ya existen EXACTAMENTE igual (misma zona, día y horario) se omiten, así volver
+// Los turnos que ya existen EXACTAMENTE igual (misma zona, día y horario; sin contar los
+// eliminados) se omiten, así volver
 // a ejecutar la misma carga no duplica nada. Un turno con horario distinto sobre el mismo día
 // sí se crea (el Panel nunca prohibió turnos superpuestos); la UI avisa de las superposiciones.
 
@@ -55,7 +56,7 @@ export async function onRequestPost({ request, env }) {
     // Duplicados exactos ya existentes (cualquier estado, activo o no).
     const { results: existentes } = await env.DB.prepare(
       `SELECT zona_id, dia_semana FROM turnos_entrega
-        WHERE zona_id IN (${marcas}) AND hora_inicio = ? AND hora_fin = ?`
+        WHERE zona_id IN (${marcas}) AND hora_inicio = ? AND hora_fin = ? AND eliminado = 0`
     ).bind(...zonaIds, inicio, fin).all();
     const yaExiste = new Set(existentes.map((t) => `${t.zona_id}|${t.dia_semana}`));
 
