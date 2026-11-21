@@ -136,6 +136,15 @@ export async function onRequestDelete({ params, request, env }) {
 
   if (!resultado.ok) {
     console.error('[trabajos DELETE] El Wizard no pudo eliminar el pedido', id, resultado.status, resultado.error);
+    // 404/405 sin JSON = la ruta no existe en el Wizard (no es "pedido no encontrado",
+    // que el Wizard contesta siempre con JSON). Ver explicación en trabajos/index.js.
+    if (resultado.data == null && (resultado.status === 404 || resultado.status === 405)) {
+      return errorJson(
+        `El Wizard no tiene la ruta /api/panel/eliminar-pedido (HTTP ${resultado.status}). Verificá que el archivo esté ` +
+          `desplegado en el Wizard (functions/api/panel/) y que WIZARD_URL apunte al proyecto del Wizard.`,
+        502
+      );
+    }
     const status = resultado.status >= 400 && resultado.status < 500 && resultado.status !== 401 && resultado.status !== 403
       ? resultado.status : 502;
     return errorJson(resultado.error || 'No se pudo eliminar el pedido.', status);

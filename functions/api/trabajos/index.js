@@ -148,10 +148,26 @@ export async function onRequestPost({ request, env }) {
 
   if (!resultado.ok) {
     console.error('[trabajos POST] El Wizard no pudo crear el pedido', resultado.status, resultado.error);
-    return errorJson(resultado.error || 'No se pudo crear el pedido.', estadoParaCliente(resultado.status));
+    return respuestaDeError(resultado, '/api/panel/crear-pedido', 'No se pudo crear el pedido.');
   }
   console.log('[trabajos POST] Pedido manual creado', { trabajo_id: resultado.data && resultado.data.trabajo_id, por: body.creado_por || null });
   return json(resultado.data, 201);
+}
+
+// Traduce un fallo del Wizard a una respuesta para el navegador.
+// Cloudflare Pages contesta 404/405 SIN JSON cuando la ruta no existe en el proyecto
+// (típico: el archivo del endpoint no está desplegado en el Wizard, o WIZARD_URL apunta
+// a otro proyecto). Nuestros endpoints siempre contestan JSON, así que "no-JSON + 404/405"
+// significa "esa ruta no existe", y se explica en vez de mostrar un 405 mudo.
+function respuestaDeError(resultado, ruta, mensajePorDefecto) {
+  if (resultado.data == null && (resultado.status === 404 || resultado.status === 405)) {
+    return errorJson(
+      `El Wizard no tiene la ruta ${ruta} (HTTP ${resultado.status}). Verificá que el archivo esté desplegado en el Wizard ` +
+        `(functions/api/panel/) y que WIZARD_URL apunte al proyecto del Wizard.`,
+      502
+    );
+  }
+  return errorJson(resultado.error || mensajePorDefecto, estadoParaCliente(resultado.status));
 }
 
 // 400/404/409 del Wizard se muestran tal cual. Un 401/403 del Wizard es un problema de

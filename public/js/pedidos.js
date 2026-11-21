@@ -685,11 +685,12 @@ async function eliminarPedido(t) {
       `⚠ El pedido #${t.id} (${quien}) está PAGADO — ${fmtMoneda(t.total)}.\n\n` +
         `Si lo eliminás, el cobro queda sin pedido y el reembolso, si corresponde, es manual. ` +
         `Se borran también sus archivos, pagos y mensajes, y NO se puede deshacer.\n\n` +
-        `Para confirmar, escribí el número de pedido (${t.id}):`
+        `Para confirmar, escribí el número de pedido: ${t.id}`
     );
     if (escrito === null) return;
-    if (escrito.trim() !== String(t.id)) {
-      alert('El número no coincide. No se eliminó nada.');
+    // Solo se comparan los dígitos: "26", "#26" o " 26 " valen lo mismo.
+    if (escrito.replace(/\D/g, '') !== String(t.id)) {
+      alert(`Escribiste "${escrito}" y el pedido es el ${t.id}. No se eliminó nada.`);
       return;
     }
     confirmarPagado = true;
