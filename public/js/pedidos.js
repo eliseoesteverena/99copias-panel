@@ -705,7 +705,7 @@ async function eliminarPedido(t) {
   const boton = document.getElementById('btn-eliminar-pedido');
   if (boton) boton.disabled = true;
   try {
-    await api.delAuth(`/api/trabajos/${t.id}${confirmarPagado ? '?confirmar_pagado=1' : ''}`);
+    await api.del(`/api/trabajos/${t.id}${confirmarPagado ? '?confirmar_pagado=1' : ''}`);
     pedidoSeleccionadoId = null;
     document.getElementById('detalle-col').innerHTML =
       `<div class="mensaje ok">Pedido #${t.id} eliminado.</div>`;

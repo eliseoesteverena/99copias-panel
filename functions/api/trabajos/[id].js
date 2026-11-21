@@ -1,6 +1,5 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
 import { llamarWizard } from '../lib/wizard.js';
-import { verificarSesion } from '../lib/auth-panel.js';
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_proceso', 'listo', 'entregado'];
 const ESTADOS_QUE_AVISAN_AL_WIZARD = ['listo', 'entregado'];
@@ -122,13 +121,10 @@ export async function onRequestPatch({ params, request, env }) {
 }
 
 // DELETE /api/trabajos/:id[?confirmar_pagado=1]  -> elimina el pedido DEFINITIVAMENTE
-// (base de datos, archivos y pagos) y sin avisar al cliente. Requiere sesión del Panel.
+// (base de datos, archivos y pagos) y sin avisar al cliente.
 // Si el pedido está pagado, hay que pasar confirmar_pagado=1 (el Wizard lo exige).
 // La eliminación real la hace el Wizard (POST /api/panel/eliminar-pedido).
 export async function onRequestDelete({ params, request, env }) {
-  const sesion = await verificarSesion(request, env);
-  if (!sesion.ok) return errorJson(sesion.error, sesion.status);
-
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) return errorJson('Id de pedido inválido.', 400);
   const confirmarPagado = new URL(request.url).searchParams.get('confirmar_pagado') === '1';
@@ -144,6 +140,6 @@ export async function onRequestDelete({ params, request, env }) {
       ? resultado.status : 502;
     return errorJson(resultado.error || 'No se pudo eliminar el pedido.', status);
   }
-  console.log('[trabajos DELETE] Pedido eliminado', { id, por: sesion.email, pagado: confirmarPagado });
+  console.log('[trabajos DELETE] Pedido eliminado', { id, pagado: confirmarPagado });
   return json(resultado.data);
 }

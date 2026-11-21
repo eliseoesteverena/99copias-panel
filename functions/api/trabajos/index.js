@@ -1,6 +1,5 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
 import { llamarWizard } from '../lib/wizard.js';
-import { verificarSesion } from '../lib/auth-panel.js';
 
 // GET /api/trabajos?estado=&pagado=&zona_id=&categoria_id=&con_envio=&fecha_desde=&fecha_hasta=&q=
 // Lista pedidos para el panel (vista tipo bandeja de email).
@@ -136,25 +135,22 @@ export async function onRequestGet({ request, env }) {
 }
 
 // POST /api/trabajos  -> carga manual de un pedido (ej. los que entran por WhatsApp).
-// Requiere sesión del Panel (ver lib/auth-panel.js). El alta real la hace el Wizard
+// Sin verificación de sesión, igual que el resto de /api/*. El alta real la hace el Wizard
 // (POST /api/panel/crear-pedido) para usar la misma lógica de precios que la web.
 // Contrato del body: ver functions/api/panel/crear-pedido.js del Wizard.
 export async function onRequestPost({ request, env }) {
-  const sesion = await verificarSesion(request, env);
-  if (!sesion.ok) return errorJson(sesion.error, sesion.status);
-
   const body = await readJson(request);
   if (!body || typeof body !== 'object') return errorJson('Body inválido.', 400);
 
-  // Quién carga el pedido sale SIEMPRE del token, nunca de lo que mande el navegador.
-  const { creado_por: _ignorado, ...datos } = body;
-  const resultado = await llamarWizard(env, '/api/panel/crear-pedido', { ...datos, creado_por: sesion.email });
+  // creado_por lo manda el navegador (email del operador logueado): sirve para saber
+  // quién cargó cada pedido, pero no es un dato verificado.
+  const resultado = await llamarWizard(env, '/api/panel/crear-pedido', body);
 
   if (!resultado.ok) {
     console.error('[trabajos POST] El Wizard no pudo crear el pedido', resultado.status, resultado.error);
     return errorJson(resultado.error || 'No se pudo crear el pedido.', estadoParaCliente(resultado.status));
   }
-  console.log('[trabajos POST] Pedido manual creado', { trabajo_id: resultado.data && resultado.data.trabajo_id, por: sesion.email });
+  console.log('[trabajos POST] Pedido manual creado', { trabajo_id: resultado.data && resultado.data.trabajo_id, por: body.creado_por || null });
   return json(resultado.data, 201);
 }
 

@@ -3,16 +3,10 @@
 // convención documentada.
 
 async function apiFetch(url, opciones = {}) {
-  // conAuth: adjunta el ID token de Auth0. Solo lo usan las rutas que el servidor
-  // protege (crear / eliminar pedidos); el resto de la API sigue como estaba.
-  const { conAuth, headers: headersExtra, ...resto } = opciones;
-  const headers = { 'content-type': 'application/json', ...(headersExtra || {}) };
-  if (conAuth) {
-    const token = await Auth.getIdToken();
-    if (!token) throw new Error('Tu sesión venció. Volvé a iniciar sesión.');
-    headers.authorization = `Bearer ${token}`;
-  }
-  const res = await fetch(url, { ...resto, headers });
+  const res = await fetch(url, {
+    headers: { 'content-type': 'application/json', ...(opciones.headers || {}) },
+    ...opciones,
+  });
 
   // Leemos como texto primero y parseamos nosotros mismos: algunos proxies o
   // errores intermedios pueden devolver un content-type raro para un body
@@ -51,9 +45,6 @@ const api = {
   put: (url, body) => apiFetch(url, { method: 'PUT', body: JSON.stringify(body) }),
   patch: (url, body) => apiFetch(url, { method: 'PATCH', body: JSON.stringify(body) }),
   del: (url) => apiFetch(url, { method: 'DELETE' }),
-  // Variantes que mandan la sesión (el servidor las exige):
-  postAuth: (url, body) => apiFetch(url, { method: 'POST', body: JSON.stringify(body), conAuth: true }),
-  delAuth: (url) => apiFetch(url, { method: 'DELETE', conAuth: true }),
 };
 
 function fmtMoneda(n) {

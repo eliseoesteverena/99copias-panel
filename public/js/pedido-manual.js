@@ -194,7 +194,12 @@ const PedidoManual = (() => {
     boton.disabled = true;
     boton.textContent = 'Guardando…';
     try {
-      const r = await api.postAuth('/api/trabajos', payload);
+      // Quién lo carga (informativo): email del usuario logueado en el Panel.
+      try {
+        const u = window.Auth && (await Auth.getUser());
+        if (u && u.email) payload.creado_por = u.email;
+      } catch { /* sin dato de usuario: queda vacío */ }
+      const r = await api.post('/api/trabajos', payload);
       dlg.close();
       if (onCreado) await onCreado(r.trabajo_id);
       if (r.pago_registrado === false) {
