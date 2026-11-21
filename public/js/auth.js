@@ -120,6 +120,19 @@ const Auth = (() => {
   }
 
   /**
+   * ID token (JWT) del usuario logueado. El servidor lo verifica en las rutas
+   * sensibles (crear / eliminar pedidos, ver functions/api/lib/auth-panel.js).
+   * Se pide con getTokenSilently primero para que se renueve si venció.
+   * @returns {Promise<string|null>}
+   */
+  async function getIdToken() {
+    _assertInit();
+    try { await client.getTokenSilently(); } catch { /* si falla, usamos lo que haya en caché */ }
+    const claims = await client.getIdTokenClaims();
+    return (claims && claims.__raw) || null;
+  }
+
+  /**
    * Guard para páginas protegidas. Si no hay sesión, manda a /login.html
    * (con ?returnTo= la página actual) en vez de ir directo a Auth0 — así
    * el usuario ve la pantalla del panel, no el Universal Login de una.
@@ -142,5 +155,5 @@ const Auth = (() => {
     }
   }
 
-  return { init, login, logout, isAuthenticated, getUser, getToken, requireAuth };
+  return { init, login, logout, isAuthenticated, getUser, getToken, getIdToken, requireAuth };
 })();

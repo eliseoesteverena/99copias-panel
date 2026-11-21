@@ -1,5 +1,6 @@
 import { json, errorJson, readJson } from '../lib/utils.js';
 import { llamarWizard } from '../lib/wizard.js';
+import { verificarSesion } from '../lib/auth-panel.js';
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_proceso', 'listo', 'entregado'];
 const ESTADOS_QUE_AVISAN_AL_WIZARD = ['listo', 'entregado'];
@@ -16,8 +17,13 @@ export async function onRequestGet({ params, env }) {
         t.configuracion, t.zona_id, t.turno_entrega_id, t.categoria_id,
         t.con_envio, t.costo_envio,
         t.user_id,
-        pf.nombre, pf.apellido, pf.documento_tipo, pf.documento_numero, pf.celular,
-        COALESCE(pf.email_contacto, u.email) as email,
+        t.origen, t.medio_pago, t.creado_por,
+        COALESCE(pf.nombre, t.cliente_nombre) as nombre,
+        COALESCE(pf.apellido, t.cliente_apellido) as apellido,
+        COALESCE(pf.documento_tipo, t.cliente_documento_tipo) as documento_tipo,
+        COALESCE(pf.documento_numero, t.cliente_documento_numero) as documento_numero,
+        COALESCE(pf.celular, t.cliente_celular) as celular,
+        COALESCE(pf.email_contacto, t.cliente_email, CASE WHEN u.isAnonymous = 1 THEN NULL ELSE u.email END) as email,
         u.isAnonymous as usuario_anonimo,
         z.nombre as zona_nombre, z.es_retiro, z.precio_envio as zona_precio_envio_actual,
         te.dia_semana, te.hora_inicio, te.hora_fin,
@@ -57,6 +63,7 @@ export async function onRequestGet({ params, env }) {
       trabajo: trabajoSinConfig,
       archivos: configuracion.archivos || [],
       items: configuracion.items || [],
+      ajuste: configuracion.ajuste || null, // precio acordado distinto del calculado (pedidos manuales)
       pagos: pagos.results || [],
     });
   } catch (e) {
@@ -112,4 +119,31 @@ export async function onRequestPatch({ params, request, env }) {
   } catch (e) {
     return errorJson(`Error actualizando el estado: ${e.message}`, 500);
   }
+}
+
+// DELETE /api/trabajos/:id[?confirmar_pagado=1]  -> elimina el pedido DEFINITIVAMENTE
+// (base de datos, archivos y pagos) y sin avisar al cliente. Requiere sesión del Panel.
+// Si el pedido está pagado, hay que pasar confirmar_pagado=1 (el Wizard lo exige).
+// La eliminación real la hace el Wizard (POST /api/panel/eliminar-pedido).
+export async function onRequestDelete({ params, request, env }) {
+  const sesion = await verificarSesion(request, env);
+  if (!sesion.ok) return errorJson(sesion.error, sesion.status);
+
+  const id = Number(params.id);
+  if (!Number.isInteger(id) || id <= 0) return errorJson('Id de pedido inválido.', 400);
+  const confirmarPagado = new URL(request.url).searchParams.get('confirmar_pagado') === '1';
+
+  const resultado = await llamarWizard(env, '/api/panel/eliminar-pedido', {
+    trabajo_id: id,
+    ...(confirmarPagado ? { confirmar_pagado: true } : {}),
+  });
+
+  if (!resultado.ok) {
+    console.error('[trabajos DELETE] El Wizard no pudo eliminar el pedido', id, resultado.status, resultado.error);
+    const status = resultado.status >= 400 && resultado.status < 500 && resultado.status !== 401 && resultado.status !== 403
+      ? resultado.status : 502;
+    return errorJson(resultado.error || 'No se pudo eliminar el pedido.', status);
+  }
+  console.log('[trabajos DELETE] Pedido eliminado', { id, por: sesion.email, pagado: confirmarPagado });
+  return json(resultado.data);
 }

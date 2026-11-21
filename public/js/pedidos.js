@@ -5,6 +5,8 @@ let debounceBusqueda = null;
 let productosPorId = {}; // id -> { descripcion, unidad_medida }
 
 const FAZ_LABEL = { simple: 'Simple faz', doble: 'Doble faz' };
+const MEDIO_PAGO_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', mercadopago: 'Mercado Pago', otro: 'Otro medio' };
+const ORIGEN_LABEL = { whatsapp: 'WhatsApp', mostrador: 'Mostrador', telefono: 'Teléfono', otro: 'Manual' };
 
 const ESTADOS_ORDEN = ['pendiente', 'en_proceso', 'listo', 'entregado'];
 const ESTADOS_LABEL = {
@@ -21,6 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarProductosCache();
   cargarLista().then(abrirPedidoDesdeUrl);
   cargarBannerComprobantes();
+
+  // Carga manual de pedidos (pedido-manual.js). Al crear uno, lo abrimos.
+  if (window.PedidoManual) {
+    window.PedidoManual.init({
+      onCreado: async (id) => {
+        await cargarLista();
+        await seleccionarPedido(id);
+      },
+    });
+  }
 
   document.getElementById('btn-toggle-filtros').addEventListener('click', () => {
     const panel = document.getElementById('filtros-panel');
@@ -279,6 +291,7 @@ function renderLista(trabajos) {
           <div class="pedido-item-badges">
             <span class="badge badge-${t.estado}">${ESTADOS_LABEL[t.estado] || t.estado}</span>
             <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
+            ${t.origen && t.origen !== 'web' ? `<span class="badge badge-info">✍ ${ORIGEN_LABEL[t.origen] || 'Manual'}</span>` : ''}
             ${t.categoria_nombre ? `<span class="badge">${escapeHtml(t.categoria_nombre)}</span>` : ''}
             <span class="badge">${t.con_envio ? '🚚 Envío' : '🏠 Retiro'}</span>
             <span class="badge">${t.archivos_count} arch.</span>
@@ -334,7 +347,7 @@ async function seleccionarPedido(id) {
 }
 
 function renderDetalle(data, mensajes) {
-  const { trabajo: t, archivos, items, pagos } = data;
+  const { trabajo: t, archivos, items, pagos, ajuste } = data;
   const col = document.getElementById('detalle-col');
 
   const botonesEstado = ESTADOS_ORDEN.map((estado) => {
@@ -363,8 +376,10 @@ function renderDetalle(data, mensajes) {
         </div>
       </div>
       <div class="detalle-estado-acciones">
-        <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}</span>
+        <span class="badge ${t.pagado ? 'badge-pagado' : 'badge-no-pagado'}">${t.pagado ? 'Pagado' : 'No pagado'}${t.pagado && t.medio_pago ? ` · ${MEDIO_PAGO_LABEL[t.medio_pago] || escapeHtml(t.medio_pago)}` : ''}</span>
+        ${t.origen && t.origen !== 'web' ? `<span class="badge badge-info" title="${t.creado_por ? 'Cargado por ' + escapeHtml(t.creado_por) : ''}">✍ Cargado a mano · ${ORIGEN_LABEL[t.origen] || 'Manual'}</span>` : ''}
         <div class="detalle-estado-botones" id="botones-estado">${botonesEstado}</div>
+        <button class="chico peligro" id="btn-eliminar-pedido" title="Eliminar el pedido definitivamente">🗑 Eliminar</button>
       </div>
     </div>
 
@@ -431,6 +446,7 @@ function renderDetalle(data, mensajes) {
         ${archivos.map((a, i) => archivoCardHtml(t.id, a, emparejarItem(a, items, i))).join('')}
       </div>
       <div class="archivos-total">Total del pedido: <strong>${fmtMoneda(t.total)}</strong></div>
+      ${ajuste ? `<div class="nota-inline">Precio acordado: el sistema calculó ${fmtMoneda(ajuste.total_calculado)}${ajuste.motivo ? ` · Motivo: ${escapeHtml(ajuste.motivo)}` : ''}</div>` : ''}
     </div>
 
     <div class="detalle-tab-panel" data-tab-panel="pagos">
@@ -444,9 +460,9 @@ function renderDetalle(data, mensajes) {
                   .map(
                     (p) => `<tr>
                       <td>${fmtFechaHora(p.creado_en)}</td>
-                      <td>${p.medio === 'transferencia' ? 'Transferencia' : 'Mercado Pago'}</td>
-                      <td>${p.medio === 'transferencia' ? escapeHtml(p.estado_revision || '—') : escapeHtml(p.mp_status || '—')}</td>
-                      <td>${escapeHtml(p.medio === 'transferencia' ? p.motivo_rechazo || '—' : p.mp_status_detail || '—')}</td>
+                      <td>${MEDIO_PAGO_LABEL[p.medio] || escapeHtml(p.medio || '—')}${p.revisado_en && !p.mp_payment_id && !p.comprobante_r2_key ? ' <small>(registrado a mano)</small>' : ''}</td>
+                      <td>${escapeHtml(p.medio === 'mercadopago' ? p.mp_status || p.estado_revision || '—' : p.estado_revision || '—')}</td>
+                      <td>${escapeHtml(p.medio === 'mercadopago' ? p.mp_status_detail || '—' : p.motivo_rechazo || '—')}</td>
                       <td class="num">${fmtMoneda(p.monto)}</td>
                     </tr>`
                   )
@@ -454,7 +470,7 @@ function renderDetalle(data, mensajes) {
               </tbody>
             </table>`
       }
-      ${pagos.filter((p) => p.medio === 'transferencia').map((p) => comprobanteCardHtml(p)).join('')}
+      ${pagos.filter((p) => p.medio === 'transferencia' && !(p.estado_revision === 'aprobado' && !p.comprobante_r2_key)).map((p) => comprobanteCardHtml(p)).join('')}
     </div>
 
     <div class="detalle-tab-panel" data-tab-panel="mensajes">
@@ -485,6 +501,8 @@ function renderDetalle(data, mensajes) {
   document.querySelectorAll('#botones-estado button').forEach((btn) => {
     btn.addEventListener('click', () => cambiarEstado(t.id, btn.dataset.estado));
   });
+
+  document.getElementById('btn-eliminar-pedido').addEventListener('click', () => eliminarPedido(t));
 
   // eventos de archivos individuales
   document.querySelectorAll('.archivo-abrir').forEach((btn) => {
@@ -605,7 +623,9 @@ function archivoCardHtml(trabajoId, archivo, item) {
             archivo.r2_key
               ? `<button class="chico fantasma archivo-abrir" data-key="${escapeHtml(archivo.r2_key)}">Abrir</button>
                  <button class="chico fantasma archivo-descargar" data-key="${escapeHtml(archivo.r2_key)}">Descargar</button>`
-              : '<span class="archivo-no-disponible">No disponible en el bucket</span>'
+              : archivo.sin_archivo
+                ? '<span class="archivo-no-disponible">Cargado a mano · sin archivo adjunto</span>'
+                : '<span class="archivo-no-disponible">No disponible en el bucket</span>'
           }
         </div>
       </div>
@@ -651,6 +671,49 @@ async function descargarZip(trabajoId, archivos, boton) {
   } finally {
     boton.disabled = false;
     boton.textContent = textoOriginal;
+  }
+}
+
+// Eliminación DEFINITIVA y silenciosa (el cliente no recibe aviso). Borra el pedido,
+// sus pagos, mensajes y archivos. Si está pagado, pide escribir el número de pedido.
+async function eliminarPedido(t) {
+  const quien = t.nombre ? `${t.nombre} ${t.apellido || ''}`.trim() : 'sin datos de contacto';
+  let confirmarPagado = false;
+
+  if (t.pagado) {
+    const escrito = prompt(
+      `⚠ El pedido #${t.id} (${quien}) está PAGADO — ${fmtMoneda(t.total)}.\n\n` +
+        `Si lo eliminás, el cobro queda sin pedido y el reembolso, si corresponde, es manual. ` +
+        `Se borran también sus archivos, pagos y mensajes, y NO se puede deshacer.\n\n` +
+        `Para confirmar, escribí el número de pedido (${t.id}):`
+    );
+    if (escrito === null) return;
+    if (escrito.trim() !== String(t.id)) {
+      alert('El número no coincide. No se eliminó nada.');
+      return;
+    }
+    confirmarPagado = true;
+  } else if (
+    !confirm(
+      `¿Eliminar definitivamente el pedido #${t.id} (${quien})?\n\n` +
+        `Se borran también sus archivos, pagos y mensajes. No se puede deshacer y el cliente no recibe aviso.`
+    )
+  ) {
+    return;
+  }
+
+  const boton = document.getElementById('btn-eliminar-pedido');
+  if (boton) boton.disabled = true;
+  try {
+    await api.delAuth(`/api/trabajos/${t.id}${confirmarPagado ? '?confirmar_pagado=1' : ''}`);
+    pedidoSeleccionadoId = null;
+    document.getElementById('detalle-col').innerHTML =
+      `<div class="mensaje ok">Pedido #${t.id} eliminado.</div>`;
+    await cargarLista();
+    cargarBannerComprobantes();
+  } catch (e) {
+    if (boton) boton.disabled = false;
+    alert(`No se pudo eliminar el pedido: ${e.message}`);
   }
 }
 

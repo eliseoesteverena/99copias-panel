@@ -1,0 +1,28 @@
+/* Carga manual de pedidos + botón eliminar. Usa colores del sistema (Canvas/CanvasText)
+   para verse bien en modo claro y oscuro sin depender de las variables de style.css. */
+.pm-btn-nuevo { width: 100%; margin-bottom: 8px; }
+.chico.peligro { border-color: #c0392b; color: #c0392b; background: transparent; }
+.chico.peligro:hover:not(:disabled) { background: #c0392b; color: #fff; }
+
+.pm-dialog { width: min(720px, 96vw); max-height: 94vh; padding: 0; border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+  border-radius: 12px; background: Canvas; color: CanvasText; }
+.pm-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.pm-dialog form { display: flex; flex-direction: column; gap: 14px; padding: 16px; max-height: 94vh; overflow-y: auto; }
+.pm-header { display: flex; align-items: center; justify-content: space-between; }
+.pm-header h2 { margin: 0; font-size: 1.15rem; }
+.pm-dialog fieldset { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 10px; padding: 10px 12px 12px; margin: 0; }
+.pm-dialog legend { padding: 0 6px; font-weight: 600; }
+.pm-dialog legend small, .pm-dialog label small { font-weight: 400; opacity: .65; }
+.pm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pm-grid label, .pm-bloque { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; }
+.pm-ancho { grid-column: 1 / -1; }
+.pm-check { flex-direction: row !important; align-items: center; gap: 8px !important; align-self: end; padding-bottom: 8px; }
+.pm-dialog input[type=text], .pm-dialog input[type=number], .pm-dialog input[type=tel], .pm-dialog input[type=email],
+.pm-dialog input[type=date], .pm-dialog select, .pm-dialog textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 8px;
+  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent); border-radius: 8px; background: Canvas; color: CanvasText; }
+.pm-linea { border: 1px dashed color-mix(in srgb, CanvasText 28%, transparent); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.pm-linea-top { display: flex; gap: 8px; margin-bottom: 8px; }
+.pm-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; position: sticky; bottom: -16px;
+  background: Canvas; padding: 10px 0 4px; }
+.pm-footer small { margin-right: auto; opacity: .7; }
+@media (max-width: 520px) { .pm-grid { grid-template-columns: 1fr; } }
