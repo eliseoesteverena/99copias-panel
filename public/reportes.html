@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reportes — Panel 99copias</title>
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+<script src="/auth.config.js"></script>
+<script src="/js/auth.js"></script>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/reportes.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2453d9">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="99copias admin">
+<link rel="icon" href="/icons/favicon-64.png">
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="marca"><span class="punto"></span>99copias · admin</div>
+  <nav>
+    <a href="/index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 12h5l1.5 2.5h5L16 12h5"/><path d="M8 7 9.5 3.5h5L16 7"/></svg>
+      Pedidos
+    </a>
+    <a href="/catalogo.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      Catálogo
+    </a>
+    <a href="/turnos.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+      Turnos
+    </a>
+    <a href="/reportes.html" class="activo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="5" y="11" width="3.5" height="9"/><rect x="10.25" y="5" width="3.5" height="15"/><rect x="15.5" y="14" width="3.5" height="6"/></svg>
+      Reportes
+    </a>
+  </nav>
+  <div class="top-nav-acciones">
+    <button id="btn-notificaciones" class="icono-boton" title="Activar notificaciones de pedidos nuevos" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+    </button>
+    <button id="btn-instalar" class="icono-boton oculto" title="Instalar la app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg>
+    </button>
+    <button id="btn-logout" class="icono-boton" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</header>
+
+<div id="auth-overlay" class="auth-overlay"><div class="auth-overlay-spinner"></div></div>
+
+<div class="pagina">
+  <h1>Reporte de ventas</h1>
+  <p class="pagina-intro">
+    Cuenta solo pedidos <strong>pagados</strong>, por fecha de creación del pedido (hora de Argentina).
+    "Ventas totales" incluye envío; "Por producto" no (el envío y los ajustes de precio se muestran aparte para que cierre con el total).
+  </p>
+
+  <section class="seccion">
+    <div class="rep-controles">
+      <div class="rep-grupo">
+        <label>Período</label>
+        <div class="segmentado" id="seg-rango">
+          <button type="button" data-rango="actual" class="activo">Mes actual</button>
+          <button type="button" data-rango="anterior">Mes anterior</button>
+          <button type="button" data-rango="custom">Personalizado</button>
+        </div>
+      </div>
+      <div class="rep-grupo">
+        <label for="f-desde">Fechas</label>
+        <div class="rep-fechas">
+          <input type="date" id="f-desde" disabled>
+          <span>→</span>
+          <input type="date" id="f-hasta" disabled>
+        </div>
+      </div>
+      <div class="rep-grupo">
+        <label>Consulta</label>
+        <div class="segmentado" id="seg-vista">
+          <button type="button" data-vista="total" class="activo">Ventas totales</button>
+          <button type="button" data-vista="productos">Por producto</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="rep-error" class="mensaje error oculto"></div>
+  <div id="rep-contenido"><p class="cargando">Cargando…</p></div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/auth-ui.js"></script>
+<script src="/js/push.js"></script>
+<script src="/js/reportes.js"></script>
+</body>
+</html>
