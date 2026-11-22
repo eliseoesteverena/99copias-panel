@@ -109,23 +109,23 @@ function nombreProducto(r) {
 function htmlProductos(d) {
   const c = d.conciliacion;
   if (!c.pedidos) return '<div class="seccion"><p class="vacio">No hay ventas pagadas en este período.</p></div>';
-  const filasP = d.primarios.map((r) => `<tr><td>${nombreProducto(r)}</td><td>${escapeHtml(r.categoria || '—')}</td>
-      <td class="num">${fmtN(r.pedidos)}</td><td class="num">${fmtN(r.copias)}</td><td class="num">${fmtN(r.carillas)}</td><td class="num">${fmtMoneda(r.facturado)}</td></tr>`).join('');
+  const filasP = d.primarios.map((r) => `<tr><td>${nombreProducto(r)}</td><td class="rep-oc">${escapeHtml(r.categoria || '—')}</td>
+      <td class="num rep-oc">${fmtN(r.pedidos)}</td><td class="num">${fmtN(r.copias)}</td><td class="num">${fmtN(r.carillas)}</td><td class="num">${fmtMoneda(r.facturado)}</td></tr>`).join('');
   const filasA = d.acabados.map((r) => `<tr><td>${nombreProducto(r)}</td>
-      <td class="num">${fmtN(r.pedidos)}</td><td class="num">${fmtN(r.unidades)}</td><td class="num">${fmtMoneda(r.facturado)}</td></tr>`).join('');
+      <td class="num rep-oc">${fmtN(r.pedidos)}</td><td class="num">${fmtN(r.unidades)}</td><td class="num">${fmtMoneda(r.facturado)}</td></tr>`).join('');
   const ajuste = Math.round(c.ajustes * 100) / 100;
   return `
     <section class="seccion">
       <div class="seccion-header"><h2>Impresión / productos</h2></div>
       <p class="seccion-nota">Carillas = hojas físicas × copias. En fotos, las carillas son las copias de cada foto.</p>
       <div class="tabla-wrap"><table>
-        <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Pedidos</th><th class="num">Copias</th><th class="num">Carillas</th><th class="num">Facturado</th></tr></thead>
+        <thead><tr><th>Producto</th><th class="rep-oc">Categoría</th><th class="num rep-oc">Pedidos</th><th class="num">Copias</th><th class="num">Carillas</th><th class="num">Facturado</th></tr></thead>
         <tbody>${filasP || '<tr><td colspan="6" class="vacio">Sin datos</td></tr>'}</tbody></table></div>
     </section>
     <section class="seccion">
       <div class="seccion-header"><h2>Acabados</h2></div>
       <div class="tabla-wrap"><table>
-        <thead><tr><th>Acabado</th><th class="num">Pedidos</th><th class="num">Unidades</th><th class="num">Facturado</th></tr></thead>
+        <thead><tr><th>Acabado</th><th class="num rep-oc">Pedidos</th><th class="num">Unidades</th><th class="num">Facturado</th></tr></thead>
         <tbody>${filasA || '<tr><td colspan="4" class="vacio">Sin datos</td></tr>'}</tbody></table></div>
     </section>
     <section class="seccion">
